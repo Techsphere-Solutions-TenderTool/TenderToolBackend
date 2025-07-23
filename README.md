@@ -64,5 +64,3 @@ Serverless-first stack on AWS:
 
 ---
 
-## 🗂️ Project Structure
-

@@ -14,6 +14,10 @@
 // Lambda handler for Eskom Tenders Scraper
 import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+
+const s3 = new S3Client({ region: "af-south-1" }); // e.g., "us-east-1"
+const BUCKET_NAME = "tender-scraper-bucket";
 
 export const lambdaHandler = async (event, context) => {
   let browser = null;
@@ -71,7 +75,11 @@ export const lambdaHandler = async (event, context) => {
             closing,
             published,
             readMore,
-            downloadLink: download ? `https://tenderbulletin.eskom.co.za${download}` : null,
+            downloadLink: download
+              ? download.startsWith("http")
+                ? download
+                : `https://tenderbulletin.eskom.co.za${download}`
+              : null,
           });
         });
 
@@ -134,9 +142,27 @@ export const lambdaHandler = async (event, context) => {
 
     console.log(` Total Eskom tenders scraped: ${tenders.length}`);
 
+    // ---- Save to S3 ----
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const fileName = `eskom/eskom-${timestamp}.json`;
+
+    const putCommand = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: fileName,
+      Body: JSON.stringify(tenders, null, 2),
+      ContentType: "application/json",
+    });
+
+    await s3.send(putCommand);
+    console.log(` ✅ Saved Eskom tenders to S3: ${BUCKET_NAME}/${fileName}`);
+
     return {
       statusCode: 200,
-      body: JSON.stringify(tenders, null, 2),
+      body: JSON.stringify({
+        message: "Scraping successful and saved to S3",
+        total: tenders.length,
+        file: `${BUCKET_NAME}/${fileName}`,
+      }),
     };
   } catch (err) {
     console.error(" Error in Lambda:", err);
@@ -150,5 +176,6 @@ export const lambdaHandler = async (event, context) => {
     }
   }
 };
+
 
   

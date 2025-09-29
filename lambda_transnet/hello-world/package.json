@@ -10,9 +10,10 @@
   "author": "SAM CLI",
   "license": "MIT",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.899.0",
     "@sparticuz/chromium": "^138.0.2",
     "axios": ">=1.6.0",
-    "puppeteer-core": "^24.21.0"
+    "puppeteer-core": "^24.22.3"
   },
   "scripts": {
     "test": "mocha tests/unit/"

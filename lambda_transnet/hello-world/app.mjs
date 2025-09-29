@@ -14,11 +14,15 @@
 // Lambda handler for Transnet Tenders Scraper
 import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+
+const s3 = new S3Client({ region: "af-south-1" }); // same region as your Eskom one
+const BUCKET_NAME = "tender-scraper-bucket";
 
 export const lambdaHandler = async (event, context) => {
   let browser = null;
   try {
-    console.log("🚀 Lambda scraper started...");
+    console.log("🚀 Lambda Transnet scraper started...");
 
     // Launch headless Chromium in Lambda
     browser = await puppeteer.launch({
@@ -29,11 +33,9 @@ export const lambdaHandler = async (event, context) => {
     });
 
     const page = await browser.newPage();
-
     await page.goto("https://transnetetenders.azurewebsites.net/Home/AdvertisedTenders", {
       waitUntil: "networkidle2",
     });
-
     await page.waitForSelector("#_advertisedTenders tbody tr");
 
     const allTenders = [];
@@ -72,10 +74,7 @@ export const lambdaHandler = async (event, context) => {
 
       // Check if Next button is present & enabled
       const nextButton = await page.$("#_advertisedTenders_next");
-      if (!nextButton) {
-        console.log("✅ No Next button found, stopping...");
-        break;
-      }
+      if (!nextButton) break;
 
       const isDisabled = await page.evaluate(
         (el) => el?.classList.contains("disabled"),
@@ -122,7 +121,7 @@ export const lambdaHandler = async (event, context) => {
         const getText = (selector) =>
           document.querySelector(selector)?.innerText.trim() || null;
 
-        return {
+        const baseDetails = {
           tenderName: getText("#lblTenderName"),
           referenceNumber: getText("#_TenderRefNumber"),
           nameOfTender: getText("#_NameOfTender"),
@@ -155,6 +154,16 @@ export const lambdaHandler = async (event, context) => {
             document.querySelectorAll(".row.eTenderLabelRows2")[13]?.children[1]
               ?.innerText.trim() || null,
         };
+
+        const documents = [];
+        document.querySelectorAll("ul.list-with-icons li a").forEach((a) => {
+          documents.push({
+            name: a.innerText.trim(),
+            url: a.getAttribute("href"),
+          });
+        });
+
+        return { ...baseDetails, documents };
       });
 
       tender.details = details;
@@ -162,9 +171,27 @@ export const lambdaHandler = async (event, context) => {
 
     console.log(`🎯 Total tenders scraped with details: ${allTenders.length}`);
 
+    // -------- 3. Save results to S3 --------
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const fileName = `transnet/transnet-${timestamp}.json`;
+
+    const putCommand = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: fileName,
+      Body: JSON.stringify(allTenders, null, 2),
+      ContentType: "application/json",
+    });
+
+    await s3.send(putCommand);
+    console.log(`✅ Saved Transnet tenders to S3: ${BUCKET_NAME}/${fileName}`);
+
     return {
       statusCode: 200,
-      body: JSON.stringify(allTenders, null, 2),
+      body: JSON.stringify({
+        message: "Scraping successful and saved to S3",
+        total: allTenders.length,
+        file: `${BUCKET_NAME}/${fileName}`,
+      }),
     };
   } catch (err) {
     console.error("❌ Error in Lambda:", err);
@@ -178,5 +205,7 @@ export const lambdaHandler = async (event, context) => {
     }
   }
 };
+
+
 
   

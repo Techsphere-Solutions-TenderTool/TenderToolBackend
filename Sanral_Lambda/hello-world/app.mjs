@@ -11,9 +11,13 @@
  * 
  */
 
-// index.js
+// Lambda handler for SANRAL Tenders Scraper
 import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+
+const s3 = new S3Client({ region: "af-south-1" }); // Adjust if needed
+const BUCKET_NAME = "tender-scraper-bucket";
 
 export const lambdaHandler = async (event, context) => {
   let browser = null;
@@ -30,8 +34,6 @@ export const lambdaHandler = async (event, context) => {
     });
 
     const page = await browser.newPage();
-
-    // Increase timeouts
     page.setDefaultNavigationTimeout(60000);
     page.setDefaultTimeout(60000);
 
@@ -135,9 +137,27 @@ export const lambdaHandler = async (event, context) => {
 
     console.log(`✅ Scraped ${allTenders.length} SANRAL tenders`);
 
+    // -------- 3. Save to S3 --------
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const fileName = `sanral/sanral-${timestamp}.json`;
+
+    const putCommand = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: fileName,
+      Body: JSON.stringify(allTenders, null, 2),
+      ContentType: "application/json",
+    });
+
+    await s3.send(putCommand);
+    console.log(`✅ Saved SANRAL tenders to S3: ${BUCKET_NAME}/${fileName}`);
+
     return {
       statusCode: 200,
-      body: JSON.stringify(allTenders),
+      body: JSON.stringify({
+        message: "Scraping successful and saved to S3",
+        total: allTenders.length,
+        file: `${BUCKET_NAME}/${fileName}`,
+      }),
     };
   } catch (err) {
     console.error("❌ Error scraping SANRAL:", err);
@@ -151,5 +171,6 @@ export const lambdaHandler = async (event, context) => {
     }
   }
 };
+
 
   

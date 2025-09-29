@@ -8,8 +8,8 @@ Description: >
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
-    Timeout: 360
-    MemorySize: 1024
+    Timeout: 720
+    MemorySize: 2048
 
     Tracing: Active
   Api:

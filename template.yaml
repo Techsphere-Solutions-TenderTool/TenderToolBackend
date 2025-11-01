@@ -176,21 +176,26 @@ Resources:
       MemorySize: 1024
       Policies:
         - AWSLambdaBasicExecutionRole
-        - AWSLambdaVPCAccessExecutionRole     # lets Lambda describe subnets/SGs & attach ENIs
+        - AWSLambdaVPCAccessExecutionRole
         - Statement:
             - Effect: Allow
               Action:
+                # SNS permissions
                 - sns:Subscribe
                 - sns:Unsubscribe
                 - sns:ListSubscriptionsByTopic
               Resource: !Ref TenderTopicArn
+            - Effect: Allow
+              Action:
+                - ssm:GetParameter
+              Resource: arn:aws:ssm:af-south-1:483647879571:parameter/tendertool/dev/db/password
       Environment:
         Variables:
           DB_HOST: !Ref RdsHost
           DB_PORT: !Ref RdsPort
           DB_NAME: !Ref DbName
           DB_USER: !Ref DbUser
-          DB_PASSWORD: !Sub "{{resolve:ssm-secure:${DbPasswordParamName}:1}}"
+          DB_PASSWORD_PARAM: !Ref DbPasswordParamName
           TENDER_TOPIC_ARN: !Ref TenderTopicArn
       Events:
         Proxy:
@@ -199,3 +204,4 @@ Resources:
             ApiId: !Ref TenderHttpApi
             Path: /{proxy+}
             Method: ANY
+

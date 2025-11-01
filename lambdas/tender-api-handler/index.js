@@ -4,18 +4,24 @@ import {
   SNSClient,
   SubscribeCommand
 } from "@aws-sdk/client-sns";
+import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 
-// DB pool
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT || '5432', 10),
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  ssl: { rejectUnauthorized: false },
-});
+// ---------- Secure DB Password Fetcher ----------
+const ssm = new SSMClient({ region: process.env.AWS_REGION });
 
-// helpers
+async function getDbPassword() {
+  const command = new GetParameterCommand({
+    Name: process.env.DB_PASSWORD_PARAM,
+    WithDecryption: true,
+  });
+  const response = await ssm.send(command);
+  return response.Parameter.Value;
+}
+
+// ---------- Shared Clients ----------
+const snsClient = new SNSClient({});
+
+// ---------- Helper Functions ----------
 const cors = () => ({
   "Content-Type": "application/json",
   "Access-Control-Allow-Origin": "*",
@@ -28,7 +34,7 @@ const SORT_WHITELIST = new Set(["closing_at", "published_at", "id"]);
 function parseIntSafe(v, d) { const n = parseInt(v, 10); return Number.isFinite(n) ? n : d; }
 function parseDateOrNull(s) { return /^\d{4}-\d{2}-\d{2}$/.test(s || "") ? s : null; }
 
-// WHERE builder
+// ---------- WHERE Builder ----------
 function buildTenderWhere(qp) {
   const where = [];
   const params = [];
@@ -68,11 +74,26 @@ function buildTenderWhere(qp) {
   return { sql, params };
 }
 
-// single shared SNS client
-const snsClient = new SNSClient({});
+// ---------- Shared Connection Pool ----------
+let pool;
 
+// ---------- Lambda Handler ----------
 export const handler = async (event) => {
+  // Initialize DB pool once per container
+  if (!pool) {
+    const password = await getDbPassword();
+    pool = new Pool({
+      host: process.env.DB_HOST,
+      port: parseInt(process.env.DB_PORT || '5432', 10),
+      database: process.env.DB_NAME,
+      user: process.env.DB_USER,
+      password,
+      ssl: { rejectUnauthorized: false },
+    });
+  }
+
   const client = await pool.connect();
+
   try {
     const method = event.requestContext?.http?.method || event.httpMethod || "GET";
     const path = event.requestContext?.http?.path || event.path || "/";
@@ -80,7 +101,7 @@ export const handler = async (event) => {
 
     if (method === "OPTIONS") return ok({}); // CORS preflight
 
-    // Save user tender category preferences + SNS subscribe
+    // ---------- Save User Tender Preferences ----------
     if (method === "POST" && path === "/user/preferences") {
       const body = JSON.parse(event.body || "{}");
       const { email, categories } = body;
@@ -103,10 +124,7 @@ export const handler = async (event) => {
         const userId = user.rows[0].id;
 
         // clear old preferences
-        await client.query(
-          "DELETE FROM user_preferences WHERE user_id = $1",
-          [userId]
-        );
+        await client.query("DELETE FROM user_preferences WHERE user_id = $1", [userId]);
 
         // insert new prefs + create SNS subscription per category
         for (const category of categories) {
@@ -120,9 +138,7 @@ export const handler = async (event) => {
             Protocol: "email",
             Endpoint: email,
             Attributes: {
-              FilterPolicy: JSON.stringify({
-                category: [category]
-              })
+              FilterPolicy: JSON.stringify({ category: [category] })
             }
           }));
         }
@@ -130,15 +146,12 @@ export const handler = async (event) => {
         return ok({ message: "Preferences saved & SNS subscriptions created" });
 
       } catch (err) {
-        console.error(" Error saving preferences:", err);
+        console.error("Error saving preferences:", err);
         return bad(500, "Internal server error");
       }
     }
 
-    // ----------------------------------
-    // EXISTING ROUTES BELOW
-    // ----------------------------------
-
+    // ---------- GET /tenders ----------
     if (method === "GET" && path === "/tenders") {
       const { sql: whereSql, params } = buildTenderWhere(qp);
       const limit = Math.min(Math.max(parseIntSafe(qp.limit, 20), 1), 100);
@@ -166,6 +179,7 @@ export const handler = async (event) => {
       });
     }
 
+    // ---------- GET /tenders/{id} ----------
     if (method === "GET" && /^\/tenders\/\d+$/.test(path)) {
       const id = path.split("/")[2];
       const tender = await client.query(`SELECT * FROM tenders WHERE id=$1;`, [id]);
@@ -177,18 +191,21 @@ export const handler = async (event) => {
       return ok({ ...tender.rows[0], documents: docs.rows, contacts: contacts.rows });
     }
 
+    // ---------- GET /tenders/{id}/documents ----------
     if (method === "GET" && /^\/tenders\/\d+\/documents$/.test(path)) {
       const id = path.split("/")[2];
       const docs = await client.query(`SELECT id, url, name, mime_type, published_at FROM documents WHERE tender_id=$1 ORDER BY id;`, [id]);
       return ok(docs.rows);
     }
 
+    // ---------- GET /tenders/{id}/contacts ----------
     if (method === "GET" && /^\/tenders\/\d+\/contacts$/.test(path)) {
       const id = path.split("/")[2];
       const contacts = await client.query(`SELECT id, name, email, phone FROM contacts WHERE tender_id=$1 ORDER BY id;`, [id]);
       return ok(contacts.rows);
     }
 
+    // ---------- Fallback ----------
     return bad(404, "Route not found");
 
   } catch (err) {

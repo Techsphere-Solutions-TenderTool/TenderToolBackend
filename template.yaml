@@ -44,11 +44,11 @@ Parameters:
 
   DbUser:
     Type: String
-    Default: postgres
+    Default: tender_app
 
   DbName:
     Type: String
-    Default: tendersdb
+    Default: tenders
 
 Globals:
   Function:

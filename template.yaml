@@ -76,6 +76,7 @@ Resources:
     Type: AWS::Serverless::HttpApi
     Properties:
       StageName: !Ref StageEnv
+      AutoDeploy: true
       CorsConfiguration:
         AllowOrigins: ['*']
         AllowHeaders: ['*']
@@ -174,8 +175,6 @@ Resources:
       Handler: index.handler
       Timeout: 30
       MemorySize: 1024
-      StageName: dev
-      AutoDeploy: true
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSLambdaVPCAccessExecutionRole

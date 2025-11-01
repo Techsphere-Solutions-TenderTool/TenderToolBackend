@@ -34,8 +34,8 @@ const snsClient = new SNSClient({});
 //   "Access-Control-Allow-Origin": "*",
 //   "Access-Control-Allow-Headers": "Content-Type,Authorization",
 // });
-// const ok = (body) => ({ statusCode: 200, headers: cors(), body: JSON.stringify(body) });
-// const bad = (code, msg) => ({ statusCode: code, headers: cors(), body: JSON.stringify({ error: msg }) });
+const ok = (body) => ({ statusCode: 200, headers: cors(), body: JSON.stringify(body) });
+const bad = (code, msg) => ({ statusCode: code, headers: cors(), body: JSON.stringify({ error: msg }) });
 
 const SORT_WHITELIST = new Set(["closing_at", "published_at", "id"]);
 function parseIntSafe(v, d) { const n = parseInt(v, 10); return Number.isFinite(n) ? n : d; }

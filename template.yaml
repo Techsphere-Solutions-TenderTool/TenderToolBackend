@@ -73,15 +73,15 @@ Resources:
   # HTTP API  #
   #########################################
   TenderHttpApi:
-  Type: AWS::Serverless::HttpApi
-  Properties:
-    StageName: !Ref StageEnv
-    CorsConfiguration:
-      AllowOrigins: ['*']
-      AllowHeaders: ['*']
-      AllowMethods: [GET, POST, OPTIONS]
-    Tags:
-      AutoDeploy: "true"
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref StageEnv
+      CorsConfiguration:
+        AllowOrigins: ['*']
+        AllowHeaders: ['*']
+        AllowMethods: [GET, POST, OPTIONS]
+      Tags:
+        AutoDeploy: "true"
 
   ####################
   # ESKOM SCRAPER    #

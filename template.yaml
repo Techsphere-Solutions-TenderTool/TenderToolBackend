@@ -39,7 +39,7 @@ Globals:
   Function:
     Runtime: nodejs20.x
     Architectures:
-      - arm64
+      - x86_64
     Timeout: 90
     MemorySize: 1024
     Environment:

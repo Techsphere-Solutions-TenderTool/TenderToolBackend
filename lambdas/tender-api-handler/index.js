@@ -10,12 +10,19 @@ import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 const ssm = new SSMClient({ region: process.env.AWS_REGION });
 
 async function getDbPassword() {
-  const command = new GetParameterCommand({
-    Name: process.env.DB_PASSWORD_PARAM,
-    WithDecryption: true,
-  });
-  const response = await ssm.send(command);
-  return response.Parameter.Value;
+  try {
+    console.log('Fetching password from SSM:', process.env.DB_PASSWORD_PARAM);
+    const command = new GetParameterCommand({
+      Name: process.env.DB_PASSWORD_PARAM,
+      WithDecryption: true,
+    });
+    const response = await ssm.send(command);
+    console.log('Successfully retrieved password from SSM');
+    return response.Parameter.Value;
+  } catch (error) {
+    console.error('Error fetching password from SSM:', error);
+    throw error;
+  }
 }
 
 // ---------- Shared Clients ----------

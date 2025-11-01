@@ -103,8 +103,17 @@ export const handler = async (event) => {
 
   try {
     const method = event.requestContext?.http?.method || event.httpMethod || "GET";
-    const path = event.requestContext?.http?.path || event.path || "/";
+    let path = event.requestContext?.http?.path || event.path || "/";
     const qp = event.queryStringParameters || {};
+
+    // Strip stage prefix (e.g., /dev) from path for HTTP API
+    // rawPath includes the stage, but we want to match against the route pattern
+    const stage = event.requestContext?.stage;
+    if (stage && path.startsWith(`/${stage}`)) {
+      path = path.substring(stage.length + 1) || '/';
+    }
+
+    console.log('Request:', { method, path, stage });
 
     if (method === "OPTIONS") return ok({}); // CORS preflight
 
@@ -213,7 +222,7 @@ export const handler = async (event) => {
     }
 
     // ---------- Fallback ----------
-    return bad(404, "Route not found");
+    return bad(404, `Route not found: ${method} ${path}`);
 
   } catch (err) {
     console.error("API error:", err);

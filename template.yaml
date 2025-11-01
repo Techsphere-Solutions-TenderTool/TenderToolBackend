@@ -166,39 +166,39 @@ Resources:
   # TENDER API (via HttpApi)
   ##########################
   TenderApiHandlerFn:
-  Type: AWS::Serverless::Function
-  Properties:
-    FunctionName: !Sub tt-tender-api-handler-${StageEnv}
-    CodeUri: lambdas/tender-api-handler
-    Handler: index.handler
-    Timeout: 30
-    MemorySize: 1024
-    Policies:
-      - AWSLambdaBasicExecutionRole
-      - Statement:
-          - Effect: Allow
-            Action:
-              - sns:Subscribe
-              - sns:Unsubscribe
-              - sns:ListSubscriptionsByTopic
-            Resource: !Ref TenderTopicArn
-          - Effect: Allow
-            Action:
-              - ssm:GetParameter
-            Resource: arn:aws:ssm:af-south-1:483647879571:parameter/tendertool/dev/db/password
-    Environment:
-      Variables:
-        DB_HOST: !Ref RdsHost
-        DB_PORT: !Ref RdsPort
-        DB_NAME: !Ref DbName
-        DB_USER: !Ref DbUser
-        DB_PASSWORD_PARAM: !Ref DbPasswordParamName
-        TENDER_TOPIC_ARN: !Ref TenderTopicArn
-    Events:
-      Proxy:
-        Type: HttpApi
-        Properties:
-          ApiId: !Ref TenderHttpApi
-          Path: /{proxy+}
-          Method: ANY
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub tt-tender-api-handler-${StageEnv}
+      CodeUri: lambdas/tender-api-handler
+      Handler: index.handler
+      Timeout: 30
+      MemorySize: 1024
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action:
+                - sns:Subscribe
+                - sns:Unsubscribe
+                - sns:ListSubscriptionsByTopic
+              Resource: !Ref TenderTopicArn
+            - Effect: Allow
+              Action:
+                - ssm:GetParameter
+              Resource: arn:aws:ssm:af-south-1:483647879571:parameter/tendertool/dev/db/password
+      Environment:
+        Variables:
+          DB_HOST: !Ref RdsHost
+          DB_PORT: !Ref RdsPort
+          DB_NAME: !Ref DbName
+          DB_USER: !Ref DbUser
+          DB_PASSWORD_PARAM: !Ref DbPasswordParamName
+          TENDER_TOPIC_ARN: !Ref TenderTopicArn
+      Events:
+        Proxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref TenderHttpApi
+            Path: /{proxy+}
+            Method: ANY
 

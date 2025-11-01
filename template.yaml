@@ -124,7 +124,7 @@ Resources:
       Handler: index.handler
       Policies:
         - AWSLambdaBasicExecutionRole
-        - SQSQueuePolicy:
+        - SQSPollerPolicy:
             QueueName: tt-etl-ingest-queue
         - S3ReadPolicy:
             BucketName: !Ref DataBucketName

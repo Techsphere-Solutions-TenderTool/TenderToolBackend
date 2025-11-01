@@ -80,35 +80,8 @@ Resources:
       AllowOrigins: ['*']
       AllowHeaders: ['*']
       AllowMethods: [GET, POST, OPTIONS]
-    DefinitionBody:
-      openapi: 3.0.1
-      info:
-        title: TenderTool API
-        version: '1.0'
-      paths:
-        /{proxy+}:
-          x-amazon-apigateway-any-method:
-            x-amazon-apigateway-integration:
-              payloadFormatVersion: "2.0"
-              type: "aws_proxy"
-              uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${TenderApiHandlerFn.Arn}/invocations
-      x-amazon-apigateway-cors:
-        allowOrigins:
-          - "*"
-        allowHeaders:
-          - "*"
-        allowMethods:
-          - GET
-          - POST
-          - OPTIONS
-      x-amazon-apigateway-minimum-compression-size: 0
-      x-amazon-apigateway-api-key-source: HEADER
-      x-amazon-apigateway-endpoint-configuration:
-        types:
-          - REGIONAL
-      x-amazon-apigateway-deployment-stage:
-        stageName: !Ref StageEnv
-        autoDeploy: true
+    Tags:
+      AutoDeploy: "true"
 
   ####################
   # ESKOM SCRAPER    #

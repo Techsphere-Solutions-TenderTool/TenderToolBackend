@@ -75,16 +75,19 @@ Resources:
       StageName: !Ref StageEnv
       CorsConfiguration:
         AllowOrigins: 
-          - 'http://localhost:5173'
-          #- 'https://yourdomain.com'  # production domain
-      AllowHeaders: 
-        - 'content-type'
-        - 'authorization'
-      AllowMethods: 
-        - GET
-        - POST
-        - OPTIONS
-      MaxAge: 300
+          - '*'
+        AllowHeaders: 
+          - content-type
+          - authorization
+          - x-requested-with
+        AllowMethods: 
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        MaxAge: 300
+        AllowCredentials: false
       Tags:
         AutoDeploy: "true"
 
@@ -97,8 +100,12 @@ Resources:
       FunctionName: !Sub tt-eskom-scraper-${StageEnv}
       CodeUri: lambdas/eskom-scraper
       Handler: index.handler
+      VpcConfig:
+        SubnetIds: !Ref VpcSubnetIds
+        SecurityGroupIds: !Ref VpcSecurityGroupIds
       Policies:
         - AWSLambdaBasicExecutionRole
+        - AWSLambdaVPCAccessExecutionRole
         - S3CrudPolicy: { BucketName: !Ref DataBucketName }
         - SQSSendMessagePolicy: { QueueName: tt-etl-ingest-queue }
       Events:
@@ -117,8 +124,12 @@ Resources:
       FunctionName: !Sub tt-transnet-scraper-${StageEnv}
       CodeUri: lambdas/transnet-scraper
       Handler: index.handler
+      VpcConfig:
+        SubnetIds: !Ref VpcSubnetIds
+        SecurityGroupIds: !Ref VpcSecurityGroupIds
       Policies:
         - AWSLambdaBasicExecutionRole
+        - AWSLambdaVPCAccessExecutionRole
         - S3CrudPolicy: { BucketName: !Ref DataBucketName }
         - SQSSendMessagePolicy: { QueueName: tt-etl-ingest-queue }
       Events:
@@ -137,8 +148,12 @@ Resources:
       FunctionName: !Sub tt-sanral-scraper-${StageEnv}
       CodeUri: lambdas/sanral-scraper
       Handler: index.handler
+      VpcConfig:
+        SubnetIds: !Ref VpcSubnetIds
+        SecurityGroupIds: !Ref VpcSecurityGroupIds
       Policies:
         - AWSLambdaBasicExecutionRole
+        - AWSLambdaVPCAccessExecutionRole
         - S3CrudPolicy: { BucketName: !Ref DataBucketName }
         - SQSSendMessagePolicy: { QueueName: tt-etl-ingest-queue }
       Events:
@@ -157,6 +172,9 @@ Resources:
       FunctionName: !Sub tt-normalizer-${StageEnv}
       CodeUri: lambdas/normalizer
       Handler: index.handler
+      VpcConfig:
+        SubnetIds: !Ref VpcSubnetIds
+        SecurityGroupIds: !Ref VpcSecurityGroupIds
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSLambdaVPCAccessExecutionRole
@@ -193,7 +211,7 @@ Resources:
             - Effect: Allow
               Action:
                 - ssm:GetParameter
-              Resource: arn:aws:ssm:af-south-1:483647879571:parameter/tendertool/dev/db/password
+              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/tendertool/*
       Environment:
         Variables:
           DB_HOST: !Ref RdsHost
@@ -209,4 +227,3 @@ Resources:
             ApiId: !Ref TenderHttpApi
             Path: /{proxy+}
             Method: ANY
-

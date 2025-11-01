@@ -16,7 +16,7 @@ import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
-const s3 = new S3Client({ region: "af-south-1" }); // same region as your Eskom one
+const s3 = new S3Client({ region: "af-south-1" });
 const BUCKET_NAME = "tender-scraper-bucket";
 
 export const lambdaHandler = async (event, context) => {

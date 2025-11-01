@@ -16,14 +16,14 @@ import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
-const s3 = new S3Client({ region: "af-south-1" }); // Adjust if needed
+const s3 = new S3Client({ region: "af-south-1" });
 const BUCKET_NAME = "tender-scraper-bucket";
 
 export const lambdaHandler = async (event, context) => {
   let browser = null;
 
   try {
-    console.log("🚀 Starting SANRAL Tenders Scraper...");
+    console.log("Starting SANRAL Tenders Scraper...");
 
     browser = await puppeteer.launch({
       args: chromium.args,
@@ -135,7 +135,7 @@ export const lambdaHandler = async (event, context) => {
       tender.details = details;
     }
 
-    console.log(`✅ Scraped ${allTenders.length} SANRAL tenders`);
+    console.log(`Scraped ${allTenders.length} SANRAL tenders`);
 
     // -------- 3. Save to S3 --------
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -149,7 +149,7 @@ export const lambdaHandler = async (event, context) => {
     });
 
     await s3.send(putCommand);
-    console.log(`✅ Saved SANRAL tenders to S3: ${BUCKET_NAME}/${fileName}`);
+    console.log(`Saved SANRAL tenders to S3: ${BUCKET_NAME}/${fileName}`);
 
     return {
       statusCode: 200,
@@ -160,7 +160,7 @@ export const lambdaHandler = async (event, context) => {
       }),
     };
   } catch (err) {
-    console.error("❌ Error scraping SANRAL:", err);
+    console.error("Error scraping SANRAL:", err);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: err.message }),

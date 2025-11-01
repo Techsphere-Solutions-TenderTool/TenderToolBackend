@@ -154,7 +154,7 @@ export const lambdaHandler = async (event, context) => {
     });
 
     await s3.send(putCommand);
-    console.log(` ✅ Saved Eskom tenders to S3: ${BUCKET_NAME}/${fileName}`);
+    console.log(` Saved Eskom tenders to S3: ${BUCKET_NAME}/${fileName}`);
 
     return {
       statusCode: 200,

@@ -14,7 +14,7 @@ const pool = new Pool({
   database: process.env.DB_NAME,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  ssl: { rejectUnauthorized: false }, // OK inside VPC; enables TLS without CA hassle
+  ssl: { rejectUnauthorized: false }, 
 });
 
 // --- helpers ---
@@ -506,8 +506,8 @@ function normalizeTransnetArray(arr) {
 
       published_at,
       briefing_at,
-      briefing_venue: null,              // use briefing_details text below instead
-      briefing_compulsory: null,         // not consistently available
+      briefing_venue: null,             
+      briefing_compulsory: null,       
       tender_start_at: null,
       closing_at,
 
@@ -516,7 +516,6 @@ function normalizeTransnetArray(arr) {
 
       url: r.detailsLink || null,
 
-      // extras specific columns in your schema
       tender_box_address: null,
       target_audience: null,
       contract_type: null,
@@ -616,7 +615,7 @@ exports.handler = async (event) => {
   console.log('SQS batch size:', event.Records?.length || 0);
   const client = await pool.connect();
 
-  // 🟢 Collect SNS messages and publish AFTER COMMIT
+  // Collect SNS messages and publish AFTER COMMIT
   const toPublish = [];
 
   try {
@@ -710,7 +709,7 @@ exports.handler = async (event) => {
             );
           }
 
-          // 🟢 Queue SNS message (publish AFTER COMMIT)
+          // Queue SNS message (publish AFTER COMMIT)
           const cat = (t.category || source || 'general').toString().trim().toLowerCase();
           const subjectBase = `New ${cat} tender: ${t.title || 'Untitled'}`.slice(0, 95); // SNS Subject <= 100 chars
 
@@ -731,20 +730,19 @@ exports.handler = async (event) => {
 
         // COMMIT TRANSACTION
         await client.query('COMMIT');
-        console.log('✅ Transaction committed for source', source);
+        console.log('Transaction committed for source', source);
         console.log(`Upserted ${items.length} ${source.toUpperCase()} record(s) from ${key}`);
       }
     }
 
-    // 🟢 Publish all queued SNS messages AFTER successful DB commit(s)
+    //  Publish all queued SNS messages AFTER successful DB commit(s)
     for (const msg of toPublish) {
       try {
         await sns.send(new PublishCommand({
-          TopicArn: process.env.TENDER_TOPIC_ARN, // 🔑 from env
+          TopicArn: process.env.TENDER_TOPIC_ARN, //  from env
           Subject: msg.subject,
           Message: JSON.stringify(msg.payload),
           MessageAttributes: {
-            // Filter policy key must match what you used when subscribing users
             category: { DataType: 'String', StringValue: msg.payload.category }
           }
         }));

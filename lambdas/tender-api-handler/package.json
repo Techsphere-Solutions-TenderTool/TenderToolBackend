@@ -1,0 +1,18 @@
+{
+  "name": "tenderapihandler",
+  "version": "1.0.0",
+  "description": "Tender API Lambda (Node 20 + AWS SDK v3)",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-sns": "^3.922.0",
+    "pg": "^8.16.3"
+  }
+}

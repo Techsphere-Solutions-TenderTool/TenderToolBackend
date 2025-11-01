@@ -74,9 +74,17 @@ Resources:
     Properties:
       StageName: !Ref StageEnv
       CorsConfiguration:
-        AllowOrigins: ['*']
-        AllowHeaders: ['*']
-        AllowMethods: [GET, POST, OPTIONS]
+        AllowOrigins: 
+          - 'http://localhost:5173'
+          #- 'https://yourdomain.com'  # production domain
+      AllowHeaders: 
+        - 'content-type'
+        - 'authorization'
+      AllowMethods: 
+        - GET
+        - POST
+        - OPTIONS
+      MaxAge: 300
       Tags:
         AutoDeploy: "true"
 

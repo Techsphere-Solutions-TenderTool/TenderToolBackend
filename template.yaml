@@ -1,0 +1,137 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  TenderTool Backend — Eskom, Transnet, Sanral scrapers and Normalizer
+  Deployed via GitHub Actions with AWS SAM (Node 20 runtime)
+
+Parameters:
+  StageEnv:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+
+  DataBucketName:
+    Type: String
+    Default: tender-scraper-bucket
+
+  IngestQueueArn:
+    Type: String
+    Default: arn:aws:sqs:af-south-1:483647879571:tt-etl-ingest-queue
+
+  VpcSubnetIds:
+    Type: CommaDelimitedList
+    Default: subnet-09214163b67aa4a0e,subnet-000aff0b975da8813,subnet-00a5a8eccd1cc5857
+
+  VpcSecurityGroupIds:
+    Type: CommaDelimitedList
+    Default: sg-004944b29da471d8b
+
+  RdsHost:
+    Type: String
+    Default: tt-postgres.c16a2miq4p2h.af-south-1.rds.amazonaws.com
+
+  RdsPort:
+    Type: String
+    Default: "5432"
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Architectures:
+      - arm64
+    Timeout: 90
+    MemorySize: 1024
+    Environment:
+      Variables:
+        STAGE: !Ref StageEnv
+        RAW_DATA_BUCKET: !Ref DataBucketName
+        INGEST_QUEUE_URL: !Sub https://sqs.${AWS::Region}.amazonaws.com/${AWS::AccountId}/tt-etl-ingest-queue
+        RDS_HOST: !Ref RdsHost
+        RDS_PORT: !Ref RdsPort
+    VpcConfig:
+      SubnetIds: !Ref VpcSubnetIds
+      SecurityGroupIds: !Ref VpcSecurityGroupIds
+
+Resources:
+
+  ### ESKOM SCRAPER ###
+  EskomScraperFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub tt-eskom-scraper-${StageEnv}
+      CodeUri: lambdas/eskom-scraper
+      Handler: index.handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - S3CrudPolicy:
+            BucketName: !Ref DataBucketName
+        - SQSSendMessagePolicy:
+            QueueName: tt-etl-ingest-queue
+      Events:
+        DailySchedule:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 4 * * ? *)
+            Name: !Sub tt-eskom-schedule-${StageEnv}
+
+  ### TRANSNET SCRAPER ###
+  TransnetScraperFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub tt-transnet-scraper-${StageEnv}
+      CodeUri: lambdas/transnet-scraper
+      Handler: index.handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - S3CrudPolicy:
+            BucketName: !Ref DataBucketName
+        - SQSSendMessagePolicy:
+            QueueName: tt-etl-ingest-queue
+      Events:
+        DailySchedule:
+          Type: Schedule
+          Properties:
+            Schedule: cron(10 4 * * ? *)
+            Name: !Sub tt-transnet-schedule-${StageEnv}
+
+  ### SANRAL SCRAPER ###
+  SanralScraperFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub tt-sanral-scraper-${StageEnv}
+      CodeUri: lambdas/sanral-scraper
+      Handler: index.handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - S3CrudPolicy:
+            BucketName: !Ref DataBucketName
+        - SQSSendMessagePolicy:
+            QueueName: tt-etl-ingest-queue
+      Events:
+        DailySchedule:
+          Type: Schedule
+          Properties:
+            Schedule: cron(20 4 * * ? *)
+            Name: !Sub tt-sanral-schedule-${StageEnv}
+
+  ### NORMALIZER ###
+  NormalizerFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub tt-normalizer-${StageEnv}
+      CodeUri: lambdas/normalizer
+      Handler: index.handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - SQSQueuePolicy:
+            QueueName: tt-etl-ingest-queue
+        - S3ReadPolicy:
+            BucketName: !Ref DataBucketName
+      Events:
+        IngestQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !Ref IngestQueueArn
+            BatchSize: 5
+            Enabled: true

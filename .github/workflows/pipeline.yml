@@ -1,0 +1,44 @@
+name: TenderTool Deploy
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: af-south-1
+  OIDC_ROLE_ARN: arn:aws:iam::483647879571:role/GitHubActionsOIDC-Role
+  ARTIFACTS_BUCKET: tendertool-cicd-artifacts-afs1
+  STACK_NAME: tendertool-dev
+  SAM_TEMPLATE: template.yaml
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup AWS SAM
+        uses: aws-actions/setup-sam@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.OIDC_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build
+        run: sam build --use-container --template $SAM_TEMPLATE
+
+      - name: Deploy
+        run: |
+          sam deploy \
+            --stack-name $STACK_NAME \
+            --template-file .aws-sam/build/template.yaml \
+            --s3-bucket $ARTIFACTS_BUCKET \
+            --region $AWS_REGION \
+            --capabilities CAPABILITY_IAM \
+            --no-fail-on-empty-changeset

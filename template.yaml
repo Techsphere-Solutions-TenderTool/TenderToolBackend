@@ -174,9 +174,9 @@ Resources:
       Handler: index.handler
       Timeout: 300
       MemorySize: 1024
-      VpcConfig:
-        SubnetIds: !Ref VpcSubnetIds
-        SecurityGroupIds: !Ref VpcSecurityGroupIds
+      # VpcConfig:
+      #   SubnetIds: !Ref VpcSubnetIds
+      #   SecurityGroupIds: !Ref VpcSecurityGroupIds
       Environment:
         Variables:
           BUCKET: !Ref DataBucketName

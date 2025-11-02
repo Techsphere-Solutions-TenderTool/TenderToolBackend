@@ -117,55 +117,99 @@ export const handler = async (event) => {
 
     if (method === "OPTIONS") return ok({}); // CORS preflight
 
-    // ---------- Save User Tender Preferences ----------
-    if (method === "POST" && path === "/user/preferences") {
-      const body = JSON.parse(event.body || "{}");
-      const { email, categories } = body;
+    // ---------- Save User Tender Preferences ---------- 
+if (method === "POST" && path === "/user/preferences") {
+  const body = JSON.parse(event.body || "{}");
+  const { email, location, categories } = body;
 
-      if (!email || !Array.isArray(categories)) {
-        return bad(400, "Email and categories[] required");
-      }
+  if (!email || !location || !Array.isArray(categories)) {
+    return bad(400, "email, location, and categories[] required");
+  }
 
-      try {
-        // find user
-        const user = await client.query(
-          "SELECT id FROM users WHERE email = $1",
-          [email]
-        );
+  try {
+    // find user
+    const userRes = await client.query(
+      "SELECT id FROM users WHERE email = $1",
+      [email]
+    );
 
-        if (user.rowCount === 0) {
-          return bad(404, "User not found");
-        }
-
-        const userId = user.rows[0].id;
-
-        // clear old preferences
-        await client.query("DELETE FROM user_preferences WHERE user_id = $1", [userId]);
-
-        // insert new prefs + create SNS subscription per category
-        for (const category of categories) {
-          await client.query(
-            "INSERT INTO user_preferences (user_id, tender_category) VALUES ($1, $2)",
-            [userId, category]
-          );
-
-          await snsClient.send(new SubscribeCommand({
-            TopicArn: process.env.TENDER_TOPIC_ARN,
-            Protocol: "email",
-            Endpoint: email,
-            Attributes: {
-              FilterPolicy: JSON.stringify({ category: [category] })
-            }
-          }));
-        }
-
-        return ok({ message: "Preferences saved & SNS subscriptions created" });
-
-      } catch (err) {
-        console.error("Error saving preferences:", err);
-        return bad(500, "Internal server error");
-      }
+    if (userRes.rowCount === 0) {
+      return bad(404, "User not found");
     }
+
+    const userId = userRes.rows[0].id;
+
+    // Update user location
+    await client.query(
+      "UPDATE users SET province = $1 WHERE id = $2",
+      [location, userId]
+    );
+
+    // Clear old category prefs
+    await client.query(
+      "DELETE FROM user_preferences WHERE user_id = $1",
+      [userId]
+    );
+
+    // Insert new category prefs + SNS subscriptions
+    for (const category of categories) {
+      await client.query(
+        "INSERT INTO user_preferences (user_id, tender_category) VALUES ($1, $2)",
+        [userId, category]
+      );
+
+      // SNS subscription for each category
+      await snsClient.send(new SubscribeCommand({
+        TopicArn: process.env.TENDER_TOPIC_ARN,
+        Protocol: "email",
+        Endpoint: email,
+        Attributes: {
+          FilterPolicy: JSON.stringify({ category: [category] })
+        }
+      }));
+    }
+
+    return ok({ message: "Preferences saved, location updated, SNS subscriptions created" });
+
+  } catch (err) {
+    console.error("Error saving user preferences:", err);
+    return bad(500, "Internal server error");
+  }
+}
+
+    // ---------- GET /user/preferences ----------
+if (method === "GET" && path === "/user/preferences") {
+  const email = qp.email;
+  if (!email) return bad(400, "email required");
+
+  try {
+    const userRes = await client.query(
+      "SELECT id, province FROM users WHERE email = $1",
+      [email]
+    );
+
+    if (userRes.rowCount === 0) {
+      return ok({ location: "", categories: [] });
+    }
+
+    const userId = userRes.rows[0].id;
+
+    const prefsRes = await client.query(
+      "SELECT tender_category FROM user_preferences WHERE user_id = $1",
+      [userId]
+    );
+
+    return ok({
+      location: userRes.rows[0].province || "",
+      categories: prefsRes.rows.map(r => r.tender_category)
+    });
+
+  } catch (err) {
+    console.error("Error loading user prefs:", err);
+    return bad(500, "Internal server error");
+  }
+}
+
 
     // ---------- GET /tenders ----------
     if (method === "GET" && path === "/tenders") {

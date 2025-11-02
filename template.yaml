@@ -63,7 +63,6 @@ Globals:
         INGEST_QUEUE_URL: !Sub https://sqs.${AWS::Region}.amazonaws.com/${AWS::AccountId}/tt-etl-ingest-queue
         RDS_HOST: !Ref RdsHost
         RDS_PORT: !Ref RdsPort
-        OPENAI_API_KEY: '{{resolve:ssm:/tendertool/dev/openai/api-key:1}}'
 
 Resources:
 

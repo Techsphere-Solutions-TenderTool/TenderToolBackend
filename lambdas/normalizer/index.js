@@ -593,82 +593,49 @@ function normalizeTransnetArray(arr) {
   }).filter(Boolean);
 }
 
-function normalizeEtendersArray(arr) {
-  if (!Array.isArray(arr)) return [];
-  return arr.map(r => {
-    const id = r.id?.toString() || crypto.randomUUID();
-    const title = squashWhitespace(r.tender_No || r.title || "Tender");
-    const description = squashWhitespace(r.description);
-    const buyer = squashWhitespace(r.organ_of_State || "Unknown");
-    const closing_at = r.closing_Date ? new Date(r.closing_Date) : null;
-    const published_at = r.date_Published ? new Date(r.date_Published) : null;
-    const province = squashWhitespace(r.province);
-    const category = squashWhitespace(r.category);
-    const contactPerson = squashWhitespace(r.contactPerson);
-    const email = squashWhitespace(r.email);
-    const telephone = squashWhitespace(r.telephone);
+function normalizeEtendersArray(etendersJson) {
+  if (!etendersJson || !Array.isArray(etendersJson.data)) {
+    console.warn("⚠️ Unexpected eTenders format");
+    return [];
+  }
 
-    // Extract support documents
-    const documents = (r.supportDocument || []).map(d => ({
-      url: `https://www.etenders.gov.za/Content/document/${d.supportDocumentID}`,
-      name: d.fileName,
-      mime_type: d.extension || null,
-      published_at: d.dateModified ? new Date(d.dateModified) : null
-    }));
-
-    // Contacts
-    const contacts = [];
-    if (email || contactPerson || telephone) {
-      contacts.push({
-        name: contactPerson || null,
-        email: email || null,
-        phone: telephone || null
-      });
-    }
-
-    const core = {
-      external_id: id,
-      source_tender_id: id,
-      title,
-      description,
-      category,
-      location: province,
-      buyer,
-      procurement_method: null,
-      procurement_method_details: null,
-      status: r.status || null,
-      tender_type: r.type || null,
-      published_at,
-      briefing_at: r.compulsory_briefing_session
-        ? new Date(r.compulsory_briefing_session)
-        : null,
-      briefing_venue: squashWhitespace(r.briefingVenue),
-      briefing_compulsory: r.briefingCompulsory || false,
-      tender_start_at: null,
-      closing_at,
-      value_amount: null,
-      value_currency: null,
-      url: null,
-      tender_box_address: squashWhitespace(r.streetname),
-      target_audience: null,
-      contract_type: null,
-      project_type: null,
-      queries_to: contactPerson || null,
-      briefing_details: squashWhitespace(r.delivery)
-    };
-
-    core.hash = sha(
-      JSON.stringify({
-        external_id: core.external_id,
-        title: core.title,
-        description: core.description,
-        buyer: core.buyer,
-        closing_at: core.closing_at ? core.closing_at.toISOString() : null
-      })
-    );
-
-    return { tender: core, documents, contacts };
-  });
+  return etendersJson.data.map(item => ({
+    tender_id: item.id || null,
+    tender_number: item.tender_No || null,
+    description: item.description || null,
+    category: item.category || item.categories?.name || null,
+    type: item.type || null,
+    organ_of_state: item.organ_of_State || null,
+    status: item.status || null,
+    closing_date: item.closing_Date || null,
+    published_date: item.date_Published || null,
+    briefing_date: item.compulsory_briefing_session || null,
+    briefing_venue: item.briefingVenue || null,
+    street_name: item.streetname || null,
+    suburb: item.surburb || null,
+    town: item.town || null,
+    postal_code: item.code || null,
+    conditions: item.conditions || null,
+    contact_person: item.contactPerson || null,
+    email: item.email || null,
+    telephone: item.telephone || null,
+    fax: item.fax || null,
+    username: item.username || null,
+    province: item.province || item.provinces?.name || null,
+    department: item.department || item.departments?.name || null,
+    validity_days: item.validity || null,
+    delivery_address: item.delivery || null,
+    briefing_required: item.briefingSession || false,
+    briefing_compulsory: item.briefingCompulsory || false,
+    e_submission: item.eSubmission || false,
+    two_envelope: item.twoEnvelopeSubmission || false,
+    documents: (item.supportDocument || [])
+      .map(doc => doc.fileName)
+      .join("; ") || null,
+    // meta
+    source_id: 1, // eTenders source
+    fetched_at: new Date().toISOString()
+  }));
 }
 
 

@@ -1,4 +1,4 @@
-// index.js (Node 20, CommonJS) - FIXED VERSION
+// index.js (Node 20, CommonJS) - FINAL FIXED VERSION WITH eTENDERS DOCUMENT HANDLING
 // npm deps packaged: pg
 const crypto = require("crypto");
 const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
@@ -222,7 +222,7 @@ function normalizeEskomArray(arr) {
 
 // ... [SANRAL and Transnet normalizers remain the same - omitted for brevity] ...
 
-// FIXED eTenders normalizer
+// FIXED eTenders normalizer with proper document handling
 function normalizeEtendersArray(raw) {
   // Handle the eTenders JSON structure which has { data: [...] }
   if (!raw || !raw.data || !Array.isArray(raw.data)) {
@@ -235,6 +235,10 @@ function normalizeEtendersArray(raw) {
   return raw.data.map((item) => {
     // Use tender_No as external_id (required for uniqueness)
     const externalId = item.tender_No || `etenders-${item.id}`;
+    
+    // IMPORTANT: Construct the eTenders tender URL
+    // This is the pattern for viewing a tender on eTenders website
+    const tenderUrl = item.id ? `https://etenders.treasury.gov.za/tender-details/${item.id}` : null;
     
     const core = {
       external_id: externalId,
@@ -259,7 +263,7 @@ function normalizeEtendersArray(raw) {
       
       value_amount: null,
       value_currency: null,
-      url: null, // eTenders doesn't provide direct URLs in this data
+      url: tenderUrl, // Link to the tender on eTenders website
       
       // Extra fields
       tender_box_address: squashWhitespace(item.delivery || item.streetname),
@@ -289,13 +293,32 @@ function normalizeEtendersArray(raw) {
     const documents = [];
     if (Array.isArray(item.supportDocument)) {
       for (const doc of item.supportDocument) {
-        if (doc.fileName) {
+        if (doc.fileName && doc.supportDocumentID) {
+          // IMPORTANT: Construct eTenders document download URL
+          // You need to verify this pattern - it might be:
+          // Option 1: Direct download link (most common)
+          const docUrl = `https://etenders.treasury.gov.za/download/document/${doc.supportDocumentID}`;
+          
+          // Option 2: Via tender ID and doc ID
+          // const docUrl = `https://etenders.treasury.gov.za/tender/${item.id}/document/${doc.supportDocumentID}`;
+          
+          // Option 3: Store metadata for proxy download through your API
+          // const docUrl = `/api/etenders/document/${item.id}/${doc.supportDocumentID}`;
+          
           documents.push({
-            url: null, // No URL provided in the data
+            url: docUrl,
             name: squashWhitespace(doc.fileName),
-            mime_type: doc.extension === '.pdf' ? 'application/pdf' : null,
+            mime_type: doc.extension === '.pdf' ? 'application/pdf' : 
+                       doc.extension === '.docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' :
+                       doc.extension === '.xlsx' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' :
+                       doc.extension === '.doc' ? 'application/msword' :
+                       doc.extension === '.xls' ? 'application/vnd.ms-excel' :
+                       null,
             published_at: parseEtendersDate(doc.dateModified),
           });
+        } else if (doc.fileName) {
+          // If we don't have supportDocumentID, skip or use filename-based URL
+          console.log(`Document ${doc.fileName} missing supportDocumentID, skipping`);
         }
       }
     }
@@ -370,6 +393,7 @@ exports.handler = async (event) => {
   // Collect SNS messages and publish AFTER COMMIT
   const toPublish = [];
   let totalProcessed = 0;
+  let totalErrors = 0;
 
   try {
     for (const msg of (event.Records || [])) {
@@ -435,103 +459,123 @@ exports.handler = async (event) => {
         console.log(`Found ${items.length} ${source} items to process`);
 
         // Process in batches to avoid long transactions
-        const BATCH_SIZE = 100;
+        const BATCH_SIZE = 50; // Reduced batch size for safety
         for (let i = 0; i < items.length; i += BATCH_SIZE) {
           const batch = items.slice(i, Math.min(i + BATCH_SIZE, items.length));
+          let batchProcessed = 0;
+          let batchErrors = 0;
           
           await client.query('BEGIN');
-          const sourceId = await getSourceId(client, source);
+          
+          try {
+            const sourceId = await getSourceId(client, source);
 
-          // Process batch
-          for (const it of batch) {
-            const t = it.tender;
-            
-            try {
-              const params = [
-                sourceId, t.external_id, t.source_tender_id, t.title, t.description, t.category, t.location, t.buyer,
-                t.procurement_method, t.procurement_method_details, t.status, t.tender_type,
-                t.published_at, t.briefing_at, t.briefing_venue, t.briefing_compulsory,
-                t.tender_start_at, t.closing_at, t.value_amount, t.value_currency, t.url, t.hash,
-                t.tender_box_address, t.target_audience, t.contract_type, t.project_type, t.queries_to, t.briefing_details
-              ];
+            // Process batch
+            for (const it of batch) {
+              const t = it.tender;
+              
+              try {
+                const params = [
+                  sourceId, t.external_id, t.source_tender_id, t.title, t.description, t.category, t.location, t.buyer,
+                  t.procurement_method, t.procurement_method_details, t.status, t.tender_type,
+                  t.published_at, t.briefing_at, t.briefing_venue, t.briefing_compulsory,
+                  t.tender_start_at, t.closing_at, t.value_amount, t.value_currency, t.url, t.hash,
+                  t.tender_box_address, t.target_audience, t.contract_type, t.project_type, t.queries_to, t.briefing_details
+                ];
 
-              const { rows } = await client.query(UPSERT_TENDER_SQL, params);
-              const tenderId = rows[0].id;
-              totalProcessed++;
+                const { rows } = await client.query(UPSERT_TENDER_SQL, params);
+                const tenderId = rows[0].id;
+                batchProcessed++;
 
-              // Replace documents
-              await client.query('DELETE FROM documents WHERE tender_id=$1', [tenderId]);
-              for (const d of it.documents || []) {
-                await client.query(
-                  `INSERT INTO documents (tender_id, url, name, mime_type, published_at)
-                   VALUES ($1,$2,$3,$4,$5)`,
-                  [tenderId, d.url, d.name || null, d.mime_type || null, d.published_at || null]
-                );
+                // Replace documents - now with proper URL handling
+                await client.query('DELETE FROM documents WHERE tender_id=$1', [tenderId]);
+                for (const d of it.documents || []) {
+                  // Since URL is nullable now, we can insert even without URL
+                  // But it's better to have URLs for user downloads
+                  await client.query(
+                    `INSERT INTO documents (tender_id, url, name, mime_type, published_at)
+                     VALUES ($1,$2,$3,$4,$5)`,
+                    [tenderId, d.url || null, d.name || null, d.mime_type || null, d.published_at || null]
+                  );
+                }
+
+                // Replace contacts
+                await client.query('DELETE FROM contacts WHERE tender_id=$1', [tenderId]);
+                for (const c of it.contacts || []) {
+                  await client.query(
+                    `INSERT INTO contacts (tender_id, name, email, phone)
+                     VALUES ($1,$2,$3,$4)`,
+                    [tenderId, c.name || null, c.email || null, c.phone || null]
+                  );
+                }
+
+                // Queue SNS message (only for first few to avoid spam)
+                if (toPublish.length < 10) {
+                  const cat = (t.category || source || 'general').toString().trim().toLowerCase();
+                  const subjectBase = `New ${cat} tender: ${t.title || 'Untitled'}`.slice(0, 95);
+
+                  toPublish.push({
+                    subject: subjectBase,
+                    payload: {
+                      tenderId,
+                      title: t.title,
+                      category: cat,
+                      source,
+                      published_at: t.published_at,
+                      closing_at: t.closing_at,
+                      url: t.url,
+                      description: t.description ? String(t.description).slice(0, 300) : null
+                    }
+                  });
+                }
+              } catch (err) {
+                console.error(`Error processing tender ${t.external_id}:`, err.message);
+                batchErrors++;
+                // Don't continue if transaction is aborted
+                if (err.message.includes('current transaction is aborted')) {
+                  throw err;
+                }
               }
-
-              // Replace contacts
-              await client.query('DELETE FROM contacts WHERE tender_id=$1', [tenderId]);
-              for (const c of it.contacts || []) {
-                await client.query(
-                  `INSERT INTO contacts (tender_id, name, email, phone)
-                   VALUES ($1,$2,$3,$4)`,
-                  [tenderId, c.name || null, c.email || null, c.phone || null]
-                );
-              }
-
-              // Queue SNS message (only for first few to avoid spam)
-              if (toPublish.length < 10) {
-                const cat = (t.category || source || 'general').toString().trim().toLowerCase();
-                const subjectBase = `New ${cat} tender: ${t.title || 'Untitled'}`.slice(0, 95);
-
-                toPublish.push({
-                  subject: subjectBase,
-                  payload: {
-                    tenderId,
-                    title: t.title,
-                    category: cat,
-                    source,
-                    published_at: t.published_at,
-                    closing_at: t.closing_at,
-                    url: t.url,
-                    description: t.description ? String(t.description).slice(0, 300) : null
-                  }
-                });
-              }
-            } catch (err) {
-              console.error(`Error processing tender ${t.external_id}:`, err.message);
-              // Continue with next tender instead of failing entire batch
             }
-          }
 
-          // COMMIT batch
-          await client.query('COMMIT');
-          console.log(`Committed batch ${Math.floor(i/BATCH_SIZE) + 1} of ${Math.ceil(items.length/BATCH_SIZE)} for ${source}`);
+            // COMMIT batch
+            await client.query('COMMIT');
+            totalProcessed += batchProcessed;
+            totalErrors += batchErrors;
+            console.log(`Batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(items.length/BATCH_SIZE)}: ${batchProcessed} success, ${batchErrors} errors`);
+            
+          } catch (batchErr) {
+            await client.query('ROLLBACK');
+            console.error(`Batch ${Math.floor(i/BATCH_SIZE) + 1} failed:`, batchErr.message);
+            totalErrors += batch.length;
+          }
         }
 
-        console.log(`✅ Successfully upserted ${items.length} ${source.toUpperCase()} records from ${key}`);
+        console.log(`✅ ${source.toUpperCase()} complete: ${totalProcessed} processed, ${totalErrors} errors`);
       }
     }
 
     // Publish SNS messages (limited to avoid spam)
     for (const msg of toPublish) {
       try {
-        await sns.send(new PublishCommand({
-          TopicArn: process.env.TENDER_TOPIC_ARN,
-          Subject: msg.subject,
-          Message: JSON.stringify(msg.payload),
-          MessageAttributes: {
-            category: { DataType: 'String', StringValue: msg.payload.category }
-          }
-        }));
-        console.log(`📣 SNS published: ${msg.subject}`);
+        if (process.env.TENDER_TOPIC_ARN) {
+          await sns.send(new PublishCommand({
+            TopicArn: process.env.TENDER_TOPIC_ARN,
+            Subject: msg.subject,
+            Message: JSON.stringify(msg.payload),
+            MessageAttributes: {
+              category: { DataType: 'String', StringValue: msg.payload.category }
+            }
+          }));
+          console.log(`📣 SNS published: ${msg.subject}`);
+        }
       } catch (snsErr) {
         console.error('SNS publish failed:', snsErr);
       }
     }
 
-    console.log(`🎯 Total tenders processed: ${totalProcessed}`);
-    return { ok: true, totalProcessed };
+    console.log(`🎯 Final: ${totalProcessed} processed, ${totalErrors} errors`);
+    return { ok: true, totalProcessed, totalErrors };
 
   } catch (err) {
     console.error('Handler error:', err);

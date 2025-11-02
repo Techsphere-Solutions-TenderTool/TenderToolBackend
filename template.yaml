@@ -204,37 +204,50 @@ Resources:
             Schedule: cron(30 4 * * ? *)
             Name: !Sub tt-etenders-schedule-${StageEnv}
 
-  ###############
-  # NORMALIZER  #
-  ###############
-  NormalizerFn:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub tt-normalizer-${StageEnv}
-      CodeUri: lambdas/normalizer
-      Handler: index.handler
-      # VpcConfig:
-      #   SubnetIds: !Ref VpcSubnetIds
-      #   SecurityGroupIds: !Ref VpcSecurityGroupIds
-      Policies:
-        - AWSLambdaBasicExecutionRole
-        - AWSLambdaVPCAccessExecutionRole
-        - SQSPollerPolicy: { QueueName: tt-etl-ingest-queue }
-        - S3ReadPolicy: { BucketName: !Ref DataBucketName }
-        - Statement:
-            - Effect: Allow
-              Action: ssm:GetParameter
-              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/tendertool/*
-      Environment:
-        Variables:
-          STAGE: !Ref StageEnv
-          RAW_DATA_BUCKET: !Ref DataBucketName
-          INGEST_QUEUE_URL: !Sub https://sqs.${AWS::Region}.amazonaws.com/${AWS::AccountId}/tt-etl-ingest-queue
-          DB_HOST: !Ref RdsHost
-          DB_PORT: !Ref RdsPort
-          DB_NAME: !Ref DbName
-          DB_USER: !Ref DbUser
-          DB_PASSWORD_PARAM: !Ref DbPasswordParamName
+###############
+# NORMALIZER  #
+###############
+NormalizerFn:
+  Type: AWS::Serverless::Function
+  Properties:
+    FunctionName: !Sub tt-normalizer-${StageEnv}
+    CodeUri: lambdas/normalizer
+    Handler: index.handler
+    Timeout: 90
+    MemorySize: 1024
+    # VpcConfig:
+    #   SubnetIds: !Ref VpcSubnetIds
+    #   SecurityGroupIds: !Ref VpcSecurityGroupIds
+    Policies:
+      - AWSLambdaBasicExecutionRole
+      - AWSLambdaVPCAccessExecutionRole
+      - SQSPollerPolicy: { QueueName: tt-etl-ingest-queue }
+      - S3ReadPolicy: { BucketName: !Ref DataBucketName }
+      - Statement:
+          - Effect: Allow
+            Action: ssm:GetParameter
+            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/tendertool/*
+    Environment:
+      Variables:
+        STAGE: !Ref StageEnv
+        RAW_DATA_BUCKET: !Ref DataBucketName
+        INGEST_QUEUE_URL: !Sub https://sqs.${AWS::Region}.amazonaws.com/${AWS::AccountId}/tt-etl-ingest-queue
+        DB_HOST: !Ref RdsHost
+        DB_PORT: !Ref RdsPort
+        DB_NAME: !Ref DbName
+        DB_USER: !Ref DbUser
+        DB_PASSWORD_PARAM: !Ref DbPasswordParamName
+        TENDER_TOPIC_ARN: !Ref TenderTopicArn     
+    Events:                                         
+      IngestQueueEvent:
+        Type: SQS
+        Properties:
+          Queue: !Ref IngestQueueArn 
+          BatchSize: 5
+          MaximumBatchingWindowInSeconds: 0
+          FunctionResponseTypes:    
+            - ReportBatchItemFailures
+          Enabled: true
 
 
   ##########################

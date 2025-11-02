@@ -181,7 +181,7 @@ Resources:
         Variables:
           BUCKET: !Ref DataBucketName
           PREFIX: "etenders/"
-          PAGE_SIZE: "100"
+          PAGE_SIZE: "50"
           MAX_PAGES: "50"
           THROTTLE_MS: "3000"
           USE_CONCURRENT: "false"
@@ -215,9 +215,6 @@ Resources:
       Handler: index.handler
       Timeout: 90
       MemorySize: 1024
-      # VpcConfig:
-      #   SubnetIds: !Ref VpcSubnetIds
-      #   SecurityGroupIds: !Ref VpcSecurityGroupIds
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSLambdaVPCAccessExecutionRole

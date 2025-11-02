@@ -4,10 +4,10 @@ const AWS = require("aws-sdk");
 const s3 = new AWS.S3();
 const lambda = new AWS.Lambda();
 
-const BASE_URL = "https://ocds-api.etenders.gov.za/api/OCDSReleases";
+const BASE_URL = "https://www.etenders.gov.za/Home/PaginatedTenderOpportunities";
+const PAGE_SIZE = parseInt(process.env.PAGE_SIZE || "50", 10); // site uses 50/page normally
 const BUCKET = process.env.BUCKET || "tender-scraper-bucket";
 const PREFIX = process.env.PREFIX || "etenders/";
-const PAGE_SIZE = parseInt(process.env.PAGE_SIZE || "100", 10);
 const MAX_PAGES = parseInt(process.env.MAX_PAGES || "50", 10);
 const THROTTLE_MS = parseInt(process.env.THROTTLE_MS || "3000", 10);
 
@@ -44,74 +44,57 @@ const createAxiosInstance = () => {
 
 async function fetchPageWithRetry(page, maxRetries = 3) {
   let lastError = null;
-  
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`Fetching page ${page} (attempt ${attempt}/${maxRetries})...`);
-      
-      const axiosInstance = createAxiosInstance();
-      
-      const response = await axiosInstance.get('', {
-        params: {
-          pageNumber: page,
-          pageSize: PAGE_SIZE,
-          dateFrom: "2010-10-28",
-          dateTo: "2025-10-28"
-        }
+      console.log(`Fetching tenders page ${page} (attempt ${attempt}/${maxRetries})...`);
+
+      const params = new URLSearchParams({
+        draw: "1",
+        start: ((page - 1) * PAGE_SIZE).toString(),
+        length: PAGE_SIZE.toString(),
+        status: "1", // 1 = open tenders
+        "search[value]": "",
+        "search[regex]": "false"
       });
-      
-      // Check if we got valid data
-      if (response.status === 200 && response.data) {
-        // Validate the response has expected structure
-        if (typeof response.data === 'object') {
-          console.log(`Page ${page} fetched successfully`);
-          return response.data;
-        } else {
-          throw new Error(`Invalid response format for page ${page}`);
-        }
-      } else if (response.status === 404) {
-        console.log(`Page ${page} not found (404)`);
-        return null; // Page doesn't exist
-      } else if (response.status === 429) {
-        // Rate limited
-        const waitTime = (attempt * 10000); // 10s, 20s, 30s
-        console.warn(`Rate limited on page ${page}. Waiting ${waitTime/1000}s...`);
-        await sleep(waitTime);
-        continue;
-      } else {
-        throw new Error(`Unexpected status ${response.status} for page ${page}`);
+
+      const response = await axios.get(`${BASE_URL}?${params.toString()}`, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        timeout: 60000,
+        httpsAgent: new https.Agent({ keepAlive: false })
+      });
+
+      if (response.status === 200 && response.data && Array.isArray(response.data.data)) {
+        console.log(`✅ Page ${page} fetched (${response.data.data.length} records)`);
+        return response.data;
       }
-      
+
+      if (response.status === 404) {
+        console.log(`Page ${page} not found (404)`);
+        return null;
+      }
+
+      throw new Error(`Unexpected status ${response.status} for page ${page}`);
     } catch (err) {
       lastError = err;
       console.error(`Error fetching page ${page}:`, err.message);
-      
-      // Determine if we should retry
-      const isRetriableError = 
-        err.code === 'ECONNRESET' ||
-        err.code === 'ETIMEDOUT' ||
-        err.code === 'ENOTFOUND' ||
-        err.code === 'ERR_BAD_RESPONSE' ||
-        err.code === 'ERR_CANCELED' ||
-        err.message.includes('timeout') ||
-        err.message.includes('socket hang up');
-      
-      if (!isRetriableError) {
-        console.error(`Non-retriable error for page ${page}:`, err.message);
-        throw err;
-      }
-      
+
       if (attempt < maxRetries) {
-        const backoffTime = Math.min(attempt * 5000, 20000); // Max 20s backoff
-        console.log(`Waiting ${backoffTime/1000}s before retry...`);
-        await sleep(backoffTime);
+        const waitMs = attempt * 5000;
+        console.log(`Retrying in ${waitMs / 1000}s...`);
+        await sleep(waitMs);
       }
     }
   }
-  
-  console.error(`Failed to fetch page ${page} after ${maxRetries} attempts`);
-  throw lastError || new Error(`Failed to fetch page ${page}`);
+
+  console.error(`❌ Failed to fetch page ${page} after ${maxRetries} attempts`);
+  throw lastError;
 }
+
 
 async function savePage(data, page) {
   if (!data) {

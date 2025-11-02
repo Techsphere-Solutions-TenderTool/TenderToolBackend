@@ -596,53 +596,78 @@ function normalizeTransnetArray(arr) {
 function normalizeEtendersArray(arr) {
   if (!Array.isArray(arr)) return [];
   return arr.map(r => {
-    const id = r.tenderReferenceNumber || r.ReferenceNumber || r.TenderNumber || crypto.randomUUID();
-    const title = squashWhitespace(r.title || r.Description || 'Tender');
-    const description = squashWhitespace(r.description || r.Details || r.BriefDescription);
-    const buyer = squashWhitespace(r.BuyerName || r.EntityName || 'Unknown');
-    const closing_at = r.closingDate ? new Date(r.closingDate) : null;
-    const published_at = r.publishedDate ? new Date(r.publishedDate) : null;
-    const url = r.tenderURL || r.url || null;
+    const id = r.id?.toString() || crypto.randomUUID();
+    const title = squashWhitespace(r.tender_No || r.title || "Tender");
+    const description = squashWhitespace(r.description);
+    const buyer = squashWhitespace(r.organ_of_State || "Unknown");
+    const closing_at = r.closing_Date ? new Date(r.closing_Date) : null;
+    const published_at = r.date_Published ? new Date(r.date_Published) : null;
+    const province = squashWhitespace(r.province);
+    const category = squashWhitespace(r.category);
+    const contactPerson = squashWhitespace(r.contactPerson);
+    const email = squashWhitespace(r.email);
+    const telephone = squashWhitespace(r.telephone);
+
+    // Extract support documents
+    const documents = (r.supportDocument || []).map(d => ({
+      url: `https://www.etenders.gov.za/Content/document/${d.supportDocumentID}`,
+      name: d.fileName,
+      mime_type: d.extension || null,
+      published_at: d.dateModified ? new Date(d.dateModified) : null
+    }));
+
+    // Contacts
+    const contacts = [];
+    if (email || contactPerson || telephone) {
+      contacts.push({
+        name: contactPerson || null,
+        email: email || null,
+        phone: telephone || null
+      });
+    }
 
     const core = {
       external_id: id,
       source_tender_id: id,
       title,
       description,
-      category: r.category || null,
-      location: r.province || null,
+      category,
+      location: province,
       buyer,
       procurement_method: null,
       procurement_method_details: null,
       status: r.status || null,
-      tender_type: null,
+      tender_type: r.type || null,
       published_at,
-      briefing_at: null,
-      briefing_venue: null,
-      briefing_compulsory: null,
+      briefing_at: r.compulsory_briefing_session
+        ? new Date(r.compulsory_briefing_session)
+        : null,
+      briefing_venue: squashWhitespace(r.briefingVenue),
+      briefing_compulsory: r.briefingCompulsory || false,
       tender_start_at: null,
       closing_at,
       value_amount: null,
       value_currency: null,
-      url,
-      tender_box_address: null,
+      url: null,
+      tender_box_address: squashWhitespace(r.streetname),
       target_audience: null,
       contract_type: null,
       project_type: null,
-      queries_to: null,
-      briefing_details: null,
+      queries_to: contactPerson || null,
+      briefing_details: squashWhitespace(r.delivery)
     };
 
-    core.hash = sha(JSON.stringify({
-      external_id: core.external_id,
-      title: core.title,
-      description: core.description,
-      buyer: core.buyer,
-      closing_at: core.closing_at ? core.closing_at.toISOString() : null,
-      url: core.url
-    }));
+    core.hash = sha(
+      JSON.stringify({
+        external_id: core.external_id,
+        title: core.title,
+        description: core.description,
+        buyer: core.buyer,
+        closing_at: core.closing_at ? core.closing_at.toISOString() : null
+      })
+    );
 
-    return { tender: core, documents: [], contacts: [] };
+    return { tender: core, documents, contacts };
   });
 }
 

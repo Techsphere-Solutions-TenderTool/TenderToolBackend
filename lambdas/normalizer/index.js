@@ -563,6 +563,59 @@ function normalizeTransnetArray(arr) {
   }).filter(Boolean);
 }
 
+function normalizeEtendersArray(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(r => {
+    const id = r.tenderReferenceNumber || r.ReferenceNumber || r.TenderNumber || crypto.randomUUID();
+    const title = squashWhitespace(r.title || r.Description || 'Tender');
+    const description = squashWhitespace(r.description || r.Details || r.BriefDescription);
+    const buyer = squashWhitespace(r.BuyerName || r.EntityName || 'Unknown');
+    const closing_at = r.closingDate ? new Date(r.closingDate) : null;
+    const published_at = r.publishedDate ? new Date(r.publishedDate) : null;
+    const url = r.tenderURL || r.url || null;
+
+    const core = {
+      external_id: id,
+      source_tender_id: id,
+      title,
+      description,
+      category: r.category || null,
+      location: r.province || null,
+      buyer,
+      procurement_method: null,
+      procurement_method_details: null,
+      status: r.status || null,
+      tender_type: null,
+      published_at,
+      briefing_at: null,
+      briefing_venue: null,
+      briefing_compulsory: null,
+      tender_start_at: null,
+      closing_at,
+      value_amount: null,
+      value_currency: null,
+      url,
+      tender_box_address: null,
+      target_audience: null,
+      contract_type: null,
+      project_type: null,
+      queries_to: null,
+      briefing_details: null,
+    };
+
+    core.hash = sha(JSON.stringify({
+      external_id: core.external_id,
+      title: core.title,
+      description: core.description,
+      buyer: core.buyer,
+      closing_at: core.closing_at ? core.closing_at.toISOString() : null,
+      url: core.url
+    }));
+
+    return { tender: core, documents: [], contacts: [] };
+  });
+}
+
 
 // --- DB upsert ---
 const UPSERT_TENDER_SQL = `
@@ -656,15 +709,18 @@ exports.handler = async (event) => {
         const asArray = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? [raw] : []);
 
         if (source === 'eskom') {
-          items = normalizeEskomArray(asArray);
+            items = normalizeEskomArray(asArray);
         } else if (source === 'sanral') {
-          items = normalizeSanralArray(asArray);
+            items = normalizeSanralArray(asArray);
         } else if (source === 'transnet') {
-          items = normalizeTransnetArray(asArray);
+            items = normalizeTransnetArray(asArray);
+        } else if (source === 'etenders') {
+            items = normalizeEtendersArray(asArray);
         } else {
-          console.log(`Source not implemented yet: ${source || 'unknown'} for key ${key}`);
-          continue;
+            console.log(`Source not implemented yet: ${source || 'unknown'} for key ${key}`);
+            continue;
         }
+
 
         if (!items.length) {
           console.log(`No ${source} items found in file: ${key}`);

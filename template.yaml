@@ -238,7 +238,7 @@ Resources:
       MemorySize: 512
       Environment:
         Variables:
-          OPENAI_API_KEY: !Sub '{{resolve:ssm-secure:/tendertool/${StageEnv}/openai/api-key:1}}'
+          OPENAI_API_PARAM: /tendertool/dev/openai/api-key
       Policies:
         - AWSLambdaBasicExecutionRole
         - Statement:

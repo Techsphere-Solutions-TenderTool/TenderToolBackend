@@ -162,6 +162,42 @@ Resources:
           Properties:
             Schedule: cron(20 4 * * ? *)
             Name: !Sub tt-sanral-schedule-${StageEnv}
+    
+  ###################
+  # ETENDERS FETCHER #
+  ###################
+  EtendersFetcherFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub tt-etenders-fetcher-${StageEnv}
+      CodeUri: lambdas/etenders-fetcher
+      Handler: index.handler
+      Timeout: 300
+      MemorySize: 1024
+      VpcConfig:
+        SubnetIds: !Ref VpcSubnetIds
+        SecurityGroupIds: !Ref VpcSecurityGroupIds
+      Environment:
+        Variables:
+          BUCKET: !Ref DataBucketName
+          PREFIX: "etenders/"
+          PAGE_SIZE: "100"
+          MAX_PAGES: "50"
+          THROTTLE_MS: "3000"
+          USE_CONCURRENT: "false"
+          INGEST_QUEUE_URL: !Sub https://sqs.${AWS::Region}.amazonaws.com/${AWS::AccountId}/tt-etl-ingest-queue
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambdaVPCAccessExecutionRole
+        - S3CrudPolicy: { BucketName: !Ref DataBucketName }
+        - SQSSendMessagePolicy: { QueueName: tt-etl-ingest-queue }
+        - AWSLambdaInvokePolicy: { FunctionName: !Sub tt-etenders-fetcher-${StageEnv} }
+      Events:
+        DailySchedule:
+          Type: Schedule
+          Properties:
+            Schedule: cron(30 4 * * ? *)
+            Name: !Sub tt-etenders-schedule-${StageEnv}
 
   ###############
   # NORMALIZER  #

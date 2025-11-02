@@ -195,7 +195,8 @@ Resources:
           - Effect: Allow
             Action:
               - lambda:InvokeFunction
-            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function/tt-etenders-fetcher-${StageEnv}
+            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:tt-etenders-fetcher-${StageEnv}
+
       Events:
         DailySchedule:
           Type: Schedule

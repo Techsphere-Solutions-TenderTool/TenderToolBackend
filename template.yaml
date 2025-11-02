@@ -221,13 +221,21 @@ Resources:
         - AWSLambdaVPCAccessExecutionRole
         - SQSPollerPolicy: { QueueName: tt-etl-ingest-queue }
         - S3ReadPolicy: { BucketName: !Ref DataBucketName }
-      Events:
-        IngestQueueEvent:
-          Type: SQS
-          Properties:
-            Queue: !Ref IngestQueueArn
-            BatchSize: 5
-            Enabled: true
+        - Statement:
+            - Effect: Allow
+              Action: ssm:GetParameter
+              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/tendertool/*
+      Environment:
+        Variables:
+          STAGE: !Ref StageEnv
+          RAW_DATA_BUCKET: !Ref DataBucketName
+          INGEST_QUEUE_URL: !Sub https://sqs.${AWS::Region}.amazonaws.com/${AWS::AccountId}/tt-etl-ingest-queue
+          DB_HOST: !Ref RdsHost
+          DB_PORT: !Ref RdsPort
+          DB_NAME: !Ref DbName
+          DB_USER: !Ref DbUser
+          DB_PASSWORD_PARAM: !Ref DbPasswordParamName
+
 
   ##########################
   # TENDER API (via HttpApi)

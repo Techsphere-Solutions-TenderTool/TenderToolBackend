@@ -230,28 +230,28 @@ Resources:
             Method: ANY
 
   TenderSummariserFn:
-  Type: AWS::Serverless::Function
-  Properties:
-    FunctionName: !Sub tt-tender-summariser-${StageEnv}
-    CodeUri: lambdas/tender-summariser
-    Handler: index.handler
-    Timeout: 30
-    MemorySize: 512
-    Environment:
-      Variables:
-        OPENAI_API_KEY: !Sub '{{resolve:ssm:/tendertool/${StageEnv}/openai/api-key:1}}'
-    Policies:
-      - AWSLambdaBasicExecutionRole
-      - Statement:
-          - Effect: Allow
-            Action: ssm:GetParameter
-            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/tendertool/*
-    Events:
-      SummariseRoute:
-        Type: HttpApi
-        Properties:
-          ApiId: !Ref TenderHttpApi
-          Path: /summarise
-          Method: POST
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub tt-tender-summariser-${StageEnv}
+      CodeUri: lambdas/tender-summariser
+      Handler: index.handler
+      Timeout: 30
+      MemorySize: 512
+      Environment:
+        Variables:
+          OPENAI_API_KEY: !Sub '{{resolve:ssm:/tendertool/${StageEnv}/openai/api-key:1}}'
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action: ssm:GetParameter
+              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/tendertool/*
+      Events:
+        SummariseRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref TenderHttpApi
+            Path: /summarise
+            Method: POST
 
 

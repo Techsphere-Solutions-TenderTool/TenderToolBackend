@@ -42,3 +42,15 @@ jobs:
             --region $AWS_REGION \
             --capabilities CAPABILITY_IAM \
             --no-fail-on-empty-changeset
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        with:
+          projectBaseDir: .
+          args: >
+            -Dsonar.organization=techsphere-solutions-tendertool
+            -Dsonar.projectKey=Techsphere-Solutions-TenderTool_TenderToolBackend
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+

@@ -1,19 +1,40 @@
 const OpenAI = require("openai");
+const { SSMClient, GetParameterCommand } = require("@aws-sdk/client-ssm");
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const ssm = new SSMClient({ region: process.env.AWS_REGION });
+let cachedClient = null; // cache client to avoid re-fetching key every cold start
+
+async function getOpenAIClient() {
+  if (cachedClient) return cachedClient;
+
+  try {
+    const paramName = process.env.OPENAI_API_PARAM;
+    console.log("Fetching OpenAI API key from SSM:", paramName);
+
+    const command = new GetParameterCommand({
+      Name: paramName,
+      WithDecryption: true,
+    });
+    const response = await ssm.send(command);
+    const apiKey = response.Parameter.Value;
+
+    cachedClient = new OpenAI({ apiKey });
+    console.log("OpenAI client initialized successfully");
+    return cachedClient;
+  } catch (error) {
+    console.error("Failed to fetch OpenAI API key:", error);
+    throw new Error("Unable to initialize OpenAI client");
+  }
+}
 
 exports.handler = async (event) => {
   try {
-    const body = JSON.parse(event.body || "{}");
+    const client = await getOpenAIClient();
 
-    // Extract tender fields
+    const body = JSON.parse(event.body || "{}");
     const { title, closingDate, description, requirements } = body;
 
-    // Build tender context text dynamically
     let tenderInfo = [];
-
     if (title) tenderInfo.push(`Title: ${title}`);
     if (closingDate) tenderInfo.push(`Closing Date: ${closingDate}`);
     if (description) tenderInfo.push(`Description: ${description}`);
@@ -56,7 +77,6 @@ exports.handler = async (event) => {
       headers: { "Access-Control-Allow-Origin": "*" },
       body: JSON.stringify({ summary }),
     };
-
   } catch (err) {
     console.error("Error occurred:", err);
     return {
@@ -66,5 +86,3 @@ exports.handler = async (event) => {
     };
   }
 };
-
-

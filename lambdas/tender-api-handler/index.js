@@ -5,6 +5,7 @@ import {
   SubscribeCommand
 } from "@aws-sdk/client-sns";
 import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 
 // ---------- Secure DB Password Fetcher ----------
 const ssm = new SSMClient({ region: process.env.AWS_REGION });
@@ -27,7 +28,9 @@ async function getDbPassword() {
 
 // ---------- Shared Clients ----------
 const snsClient = new SNSClient({});
-
+const s3 = new S3Client({ region: process.env.AWS_REGION });
+const STATS_BUCKET = process.env.STATS_BUCKET;
+const STATS_KEY = process.env.STATS_KEY || "stats/latest.json";
 // ---------- Helper Functions ----------
 // const cors = () => ({
 //   "Content-Type": "application/json",
@@ -263,6 +266,38 @@ if (method === "GET" && path === "/user/preferences") {
       const id = path.split("/")[2];
       const contacts = await client.query(`SELECT id, name, email, phone FROM contacts WHERE tender_id=$1 ORDER BY id;`, [id]);
       return ok(contacts.rows);
+    }
+
+    // ----------  GET /stats ----------
+    if (method === "GET" && path === "/stats") {
+      try {
+        const obj = await s3.send(
+          new GetObjectCommand({
+            Bucket: STATS_BUCKET,
+            Key: STATS_KEY,
+          })
+        );
+
+        const body = await obj.Body.transformToString();
+
+        return {
+          statusCode: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+          body,
+        };
+      } catch (err) {
+        console.error("Error reading stats from S3:", err);
+        return {
+          statusCode: 500,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+          },
+          body: JSON.stringify({ error: "stats not available yet" }),
+        };
+      }
     }
 
     // ---------- Fallback ----------

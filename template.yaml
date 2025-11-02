@@ -213,9 +213,9 @@ Resources:
       FunctionName: !Sub tt-normalizer-${StageEnv}
       CodeUri: lambdas/normalizer
       Handler: index.handler
-      VpcConfig:
-        SubnetIds: !Ref VpcSubnetIds
-        SecurityGroupIds: !Ref VpcSecurityGroupIds
+      # VpcConfig:
+      #   SubnetIds: !Ref VpcSubnetIds
+      #   SecurityGroupIds: !Ref VpcSecurityGroupIds
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSLambdaVPCAccessExecutionRole

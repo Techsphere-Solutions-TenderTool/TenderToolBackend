@@ -1,44 +1,74 @@
 // index.js (Node 20, CommonJS)
 // npm deps packaged: pg
-const crypto = require('crypto');
-const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
-const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns'); //  SNS v3
-const { Pool } = require('pg');
+const crypto = require("crypto");
+const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
+const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
+const { SSMClient, GetParameterCommand } = require("@aws-sdk/client-ssm");
+const { Pool } = require("pg");
 
 const s3 = new S3Client({});
-const sns = new SNSClient({ region: "af-south-1" }); //  SNS client
+const sns = new SNSClient({ region: "af-south-1" });
 
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT || '5432', 10),
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  ssl: { rejectUnauthorized: false }, 
-});
+// --- DB connection helpers ---
+let pool;
 
-// --- helpers ---
+async function getDbPassword() {
+  const ssm = new SSMClient({ region: "af-south-1" });
+  const paramName = process.env.DB_PASSWORD_PARAM;
+  if (!paramName) throw new Error("Missing DB_PASSWORD_PARAM in environment");
 
-function squashWhitespace(s) {
-  // Converts newlines/tabs/multiple spaces to a single space and trims ends
-  return (typeof s === 'string') ? s.replace(/\s+/g, ' ').trim() : (s ?? null);
+  const resp = await ssm.send(
+    new GetParameterCommand({ Name: paramName, WithDecryption: true })
+  );
+
+  if (!resp.Parameter || !resp.Parameter.Value) {
+    throw new Error(`Parameter ${paramName} not found or empty`);
+  }
+
+  return String(resp.Parameter.Value).trim();
 }
 
-// Extract emails from a blob of text
+async function getPool() {
+  if (pool) return pool;
+
+  const password = await getDbPassword();
+  console.log(`Got DB password from SSM (length: ${password.length})`);
+
+  pool = new Pool({
+    host: process.env.DB_HOST,
+    port: parseInt(process.env.DB_PORT || "5432", 10),
+    database: process.env.DB_NAME,
+    user: process.env.DB_USER,
+    password,
+    ssl: { rejectUnauthorized: false },
+  });
+
+  return pool;
+}
+
+// --- helpers ---
+function squashWhitespace(s) {
+  return typeof s === "string" ? s.replace(/\s+/g, " ").trim() : s ?? null;
+}
+
 function extractEmails(text) {
   if (!text) return [];
   const re = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
   const found = text.match(re) || [];
-  return [...new Set(found)]; // dedupe
+  return [...new Set(found)];
 }
 
 const streamToString = (stream) =>
   new Promise((resolve, reject) => {
     const chunks = [];
-    stream.on('data', (d) => chunks.push(d));
-    stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-    stream.on('error', reject);
+    stream.on("data", (d) => chunks.push(d));
+    stream.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    stream.on("error", reject);
   });
+
+function sha(data) {
+  return crypto.createHash("sha256").update(data).digest("hex");
+}
 
 // One parser for Eskom + SANRAL (SA local time by default)
 function parseLocalTenderDate(s) {
@@ -666,7 +696,9 @@ RETURNING id
 // --- Lambda handler ---
 exports.handler = async (event) => {
   console.log('SQS batch size:', event.Records?.length || 0);
-  const client = await pool.connect();
+
+  const db = await getPool();  
+  const client = await db.connect();
 
   // Collect SNS messages and publish AFTER COMMIT
   const toPublish = [];

@@ -136,26 +136,26 @@ async function savePage(data, page) {
 
     console.log(`Saved page ${page} to ${filename}`);
 
-    await sleep(1000);
+    // await sleep(1000);
 
-    // Push message to SQS so Normalizer triggers ---
-    const sqs = new AWS.SQS();
-    const queueUrl = process.env.INGEST_QUEUE_URL;
+    // // Push message to SQS so Normalizer triggers ---
+    // const sqs = new AWS.SQS();
+    // const queueUrl = process.env.INGEST_QUEUE_URL;
 
-    const messageBody = JSON.stringify({
-      bucket: BUCKET,
-      key: filename,
-      source: "etenders",
-      page,
-      timestamp,
-    });
+    // const messageBody = JSON.stringify({
+    //   bucket: BUCKET,
+    //   key: filename,
+    //   source: "etenders",
+    //   page,
+    //   timestamp,
+    // });
 
-    await sqs.sendMessage({
-      QueueUrl: queueUrl,
-      MessageBody: messageBody,
-    }).promise();
+    // await sqs.sendMessage({
+    //   QueueUrl: queueUrl,
+    //   MessageBody: messageBody,
+    // }).promise();
 
-    console.log(`Sent SQS message for page ${page} to queue ${queueUrl}`);
+    // console.log(`Sent SQS message for page ${page} to queue ${queueUrl}`);
     return filename;
   } catch (err) {
     console.error(`Failed to save page ${page} to S3:`, err);

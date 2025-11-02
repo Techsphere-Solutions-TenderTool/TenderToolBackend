@@ -241,8 +241,7 @@ exports.handler = async (event = {}) => {
   `);
   
   const startTime = Date.now();
-  const MAX_RUNTIME_MS = 280000; // 4m40s safety margin for 5min timeout
-  
+  const MAX_RUNTIME_MS = 260000; 
   let currentPage = startPage;
   const pageResults = [];
   const failedPages = [...previousFailedPages];
@@ -255,20 +254,21 @@ exports.handler = async (event = {}) => {
       if (elapsed > MAX_RUNTIME_MS) {
         console.log(`Approaching timeout limit (${Math.floor(elapsed/1000)}s elapsed)`);
         
-        if (currentPage <= MAX_PAGES) {
-          await invokeContinuation(currentPage, totalSaved, failedPages);
-          
-          return {
+        if (elapsed > MAX_RUNTIME_MS) {
+        console.log(`Timeout approaching (${elapsed/1000}s) – invoking continuation from page ${currentPage}...`);
+        await invokeContinuation(currentPage, totalSaved, failedPages);
+        return {
             statusCode: 200,
-            message: "Timeout approaching - continuation invoked",
+            message: "Continuation invoked before timeout",
             summary: {
-              lastProcessedPage: currentPage - 1,
-              totalSaved,
-              failedPages,
-              continuedFrom: currentPage
+            lastPage: currentPage - 1,
+            totalSaved,
+            failedPages,
+            continuedFrom: currentPage
             }
-          };
+        };
         }
+
         break;
       }
       
@@ -294,7 +294,7 @@ exports.handler = async (event = {}) => {
         
         // Add throttle between sequential requests
         if (currentPage <= MAX_PAGES) {
-          await sleep(THROTTLE_MS);
+          await sleep(THROTTLE_MS + 1000);
         }
       }
       

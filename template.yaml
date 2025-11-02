@@ -172,8 +172,8 @@ Resources:
       FunctionName: !Sub tt-etenders-fetcher-${StageEnv}
       CodeUri: lambdas/etenders-fetcher
       Handler: index.handler
-      Timeout: 300
-      MemorySize: 1024
+      Timeout: 900
+      MemorySize: 2048
       # VpcConfig:
       #   SubnetIds: !Ref VpcSubnetIds
       #   SecurityGroupIds: !Ref VpcSecurityGroupIds

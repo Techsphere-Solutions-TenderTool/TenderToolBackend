@@ -191,7 +191,8 @@ Resources:
         - AWSLambdaVPCAccessExecutionRole
         - S3CrudPolicy: { BucketName: !Ref DataBucketName }
         - SQSSendMessagePolicy: { QueueName: tt-etl-ingest-queue }
-        - AWSLambdaInvokePolicy: { FunctionName: !Sub tt-etenders-fetcher-${StageEnv} }
+        - AWSLambdaInvokePolicy:
+            FunctionName: !Sub tt-etenders-fetcher-${StageEnv}
       Events:
         DailySchedule:
           Type: Schedule

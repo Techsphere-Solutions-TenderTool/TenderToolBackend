@@ -6,3 +6,6 @@ __pycache__/
 *.zip
 etenders_all.json
 fetchPaginatedEtenders.js
+babel.config.js
+package.json
+package-lock.json

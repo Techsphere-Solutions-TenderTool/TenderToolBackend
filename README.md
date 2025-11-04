@@ -54,8 +54,6 @@ To create a **unified, transparent, and intelligent tender discovery system** th
 ## System Overview
 The system follows a **fully serverless, event-driven microservices architecture** on **AWS**:
 
-```mermaid
-
 graph TD
     A[EventBridge Scheduler] --> B[Scraper Lambdas]
     B --> C[S3 Raw JSON Storage]
@@ -68,7 +66,8 @@ graph TD
     J[React Frontend] --> H
     K[Cognito] --> H
 The frontend (React + Tailwind) communicates via API Gateway, while Lambda functions handle scraping, processing, storage, and notifications.
-________________________________________
+
+
 AWS Console Screenshots
 <img src="https://raw.githubusercontent.com/Techsphere-Solutions-TenderTool/TenderToolBackend/main/Images/AWS/Console1.jpg" alt="AWS Console - Lambda Functions" width="48%">
  <img src="https://raw.githubusercontent.com/Techsphere-Solutions-TenderTool/TenderToolBackend/main/Images/AWS/Console2.jpg" alt="AWS Console - RDS PostgreSQL" width="48%"> 

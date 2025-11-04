@@ -65,12 +65,13 @@ graph TD
     I --> F
     J[React Frontend] --> H
     K[Cognito] --> H
+    
 The frontend (React + Tailwind) communicates via API Gateway, while Lambda functions handle scraping, processing, storage, and notifications.
-
+________________________________________
 
 AWS Console Screenshots
 <img src="https://raw.githubusercontent.com/Techsphere-Solutions-TenderTool/TenderToolBackend/main/Images/AWS/Console1.jpg" alt="AWS Console - Lambda Functions" width="48%">
- <img src="https://raw.githubusercontent.com/Techsphere-Solutions-TenderTool/TenderToolBackend/main/Images/AWS/Console2.jpg" alt="AWS Console - RDS PostgreSQL" width="48%"> 
+<img src="https://raw.githubusercontent.com/Techsphere-Solutions-TenderTool/TenderToolBackend/main/Images/AWS/Console2.jpg" alt="AWS Console - RDS PostgreSQL" width="48%"> 
 <img src="https://raw.githubusercontent.com/Techsphere-Solutions-TenderTool/TenderToolBackend/main/Images/AWS/Console3.jpg" alt="AWS Console - S3 Buckets" width="48%">
 <img src="https://raw.githubusercontent.com/Techsphere-Solutions-TenderTool/TenderToolBackend/main/Images/AWS/Console4.jpg" alt="AWS Console - SNS &#x26; EventBridge" width="48%"> 
 ________________________________________
@@ -85,63 +86,110 @@ Before you begin, ensure you have:
 ________________________________________
 Installation Guide
 1.	Clone the repository 
-bash
+
 git clone https://github.com/Techsphere-Solutions-TenderTool/TenderToolBackend.git
 cd TenderToolBackend
-2.	Install dependencies 
-bash
+
+
+2.	Install dependencies
+
+
 npm install
-3.	Copy environment file 
-bash
+
+
+3.	Copy environment file
+
+
 cp .env.example .env
+
 Then update .env with your AWS and database credentials.
-4.	Run locally 
-bash
+
+4.	Run locally
+
+
 npm run dev
-5.	Test endpoint 
-bash
+
+5.	Test endpoint
+
+
 curl http://localhost:3000/api/health
 ________________________________________
 Environment Configuration
+
 env
+
 AWS_REGION=za-north-1
+
 AWS_ACCESS_KEY_ID=your-key
+
 AWS_SECRET_ACCESS_KEY=your-secret
+
 DB_HOST=your-rds-endpoint.amazonaws.com
+
 DB_USER=admin
+
 DB_PASSWORD=your-secure-password
+
 DB_NAME=tenderdb
+
 COGNITO_USER_POOL_ID=za-north-1_XXXXXXXXX
+
 SNS_TOPIC_ARN=arn:aws:sns:za-north-1:xxxx:NewTenderTopic
+
 S3_BUCKET=tender-raw-data-bucket
+
 PORT=3000
+
 Security Note: Never commit .env to Git. Use AWS Secrets Manager in production.
 ________________________________________
 Available Scripts
+
 Script	Description
+
 npm start	Run in production mode
+
 npm run dev	Run with hot-reload (nodemon)
+
 npm test	Run Jest unit tests
+
 npm run coverage	Generate test coverage report
+
 npm run lint	Lint code with ESLint
+
 sam build	Build SAM application
+
 sam deploy	Deploy to AWS
 ________________________________________
 API Endpoints
+
 Base URL: https://api.tendertool.tech/api
+
 Endpoint	Method	Description
+
 /tenders	GET	List all tenders
+
 /tenders/:id	GET	Get tender by ID
+
 /tenders/search	POST	Search by keyword, category, location
+
 /preferences	POST	Save user preferences
+
 /notifications/subscribe	POST	Subscribe to alerts
+
 /chatbot/query	POST	AI chatbot query
+
 /summaries/:id	GET	Get AI-generated tender summary
+
 Example Request
+
 bash
+
 GET /api/tenders
+
 Authorization: Bearer <cognito-jwt-token>
+
 Example Response
+
 json
 {
   "tenders": [
@@ -158,27 +206,45 @@ json
 ________________________________________
 Security
 •	Authentication: AWS Cognito User Pools + JWT
+
 •	Authorization: Role-based access via Cognito groups
+
 •	Encryption: 
+
 o	In transit: TLS 1.2+
+
 o	At rest: AWS KMS + RDS encryption
+
 •	Secrets: AWS Secrets Manager / Parameter Store
+
 •	Compliance: POPIA-aligned data handling
+
 •	Scanning: SonarCloud + GitHub Dependency Scan
 ________________________________________
 Deployment (AWS SAM)
+
 bash
+
 sam build
+
 sam deploy --guided
+
 •	Uses OIDC with GitHub Actions
+
 •	Deploys Lambda, API Gateway, RDS, S3, SNS, SQS, EventBridge
+
 •	Auto-scaling and pay-per-use
 ________________________________________
 Continuous Integration (GitHub Actions)
+
 yaml
+
 name: CI/CD Pipeline
+
 on: [push, pull_request]
+
 jobs:
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -196,19 +262,33 @@ jobs:
 •	Push to main → Auto-deploy
 ________________________________________
 Tech Stack
+
 Layer	Technology
+
 Runtime	Node.js v20
+
 Framework	AWS Lambda + Express (local)
+
 Database	Amazon RDS (PostgreSQL)
+
 Storage	Amazon S3
+
 Auth	AWS Cognito
+
 Messaging	Amazon SQS, SNS
+
 Scheduler	Amazon EventBridge
+
 API	Amazon API Gateway
+
 Frontend	React + Vite + Tailwind + DaisyUI
+
 Deployment	AWS SAM
+
 CI/CD	GitHub Actions
+
 Code Quality	SonarCloud
+
 Testing	Jest + Supertest
 ________________________________________
 Repository Links
@@ -218,9 +298,13 @@ ________________________________________
 
 References
 •	AWS Documentation. (2025). AWS Lambda, RDS, S3, SNS, EventBridge.
+
 •	Atlassian. (n.d.). Definition of Ready (DoR).
+
 •	ICAgile. (2023). Definition of Done.
+
 •	POPIA Compliance Guidelines. (2021). South Africa.
+
 •	GitHub Actions Documentation. (2024).
 ________________________________________
 Techsphere Solutions © 2025

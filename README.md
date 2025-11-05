@@ -10,7 +10,8 @@ It securely integrates with **AWS Cognito**, **Amazon RDS (PostgreSQL)**, **Amaz
 
 ---
 
-## Table of Contents
+## ✨ Table of Contents
+
 1. [Introduction](#introduction)
 2. [Purpose](#purpose)
 3. [System Overview](#system-overview)
@@ -29,168 +30,129 @@ It securely integrates with **AWS Cognito**, **Amazon RDS (PostgreSQL)**, **Amaz
 
 ---
 
-## Introduction
+## 🌍 Introduction
+
 The backend provides the **cloud logic and data pipeline** for the **Tender Tool** platform. It is responsible for:
 
-- **Automated scraping** of public tenders from multiple government sources  
-- **Normalization & categorization** using intelligent parsing  
-- **Structured storage** in PostgreSQL via AWS RDS  
-- **Personalized notifications** via Amazon SNS  
-- **AI-generated summaries** and **chatbot support**  
-- **Secure user authentication** with AWS Cognito  
+* ✨ **Automated scraping** of public tenders from multiple government sources
+* ⚙️ **Normalization & categorization** using intelligent parsing
+* 📊 **Structured storage** in PostgreSQL via AWS RDS
+* 📢 **Personalized notifications** via Amazon SNS
+* 🤖 **AI-generated summaries** and **chatbot support**
+* 🔐 **Secure user authentication** with AWS Cognito
 
 ---
 
-## Purpose
+## 💡 Purpose
+
 To create a **unified, transparent, and intelligent tender discovery system** that:
 
-- Centralizes fragmented public procurement data  
-- Reduces manual search effort for suppliers  
-- Enables data-driven bidding strategies  
-- Promotes fair competition and accountability in public spending  
+* Centralizes fragmented public procurement data
+* Reduces manual search effort for suppliers
+* Enables data-driven bidding strategies
+* Promotes fair competition and accountability in public spending
 
 ---
 
-## System Overview
-The system follows a **fully serverless, event-driven microservices architecture** on **AWS**:
+## 📊 System Overview
 
-graph TD
-    A[EventBridge Scheduler] --> B[Scraper Lambdas]
-    B --> C[S3 Raw JSON Storage]
-    C --> D[SQS Queue]
-    D --> E[Normalizer Lambda]
-    E --> F[RDS PostgreSQL]
-    E --> G[SNS Notifications]
-    H[API Gateway] --> I[Tender API Handler]
-    I --> F
-    J[React Frontend] --> H
-    K[Cognito] --> H
-    
-The frontend (React + Tailwind) communicates via API Gateway, while Lambda functions handle scraping, processing, storage, and notifications.
-________________________________________
+The system follows a **fully serverless, event-driven microservices architecture** on **AWS**.
 
-AWS Console Screenshots
-<img src="https://raw.githubusercontent.com/Techsphere-Solutions-TenderTool/TenderToolBackend/main/Images/AWS/Console1.jpg" alt="AWS Console - Lambda Functions" width="48%">
-<img src="https://raw.githubusercontent.com/Techsphere-Solutions-TenderTool/TenderToolBackend/main/Images/AWS/Console2.jpg" alt="AWS Console - RDS PostgreSQL" width="48%"> 
-<img src="https://raw.githubusercontent.com/Techsphere-Solutions-TenderTool/TenderToolBackend/main/Images/AWS/Console3.jpg" alt="AWS Console - S3 Buckets" width="48%">
-<img src="https://raw.githubusercontent.com/Techsphere-Solutions-TenderTool/TenderToolBackend/main/Images/AWS/Console4.jpg" alt="AWS Console - SNS &#x26; EventBridge" width="48%"> 
-________________________________________
-Prerequisites
-Before you begin, ensure you have:
-•	Node.js (v20+ LTS)
-•	npm
-•	AWS CLI & AWS SAM CLI
-•	Visual Studio Code
-•	An AWS account with IAM permissions
-•	SonarCloud account (optional for code quality)
-________________________________________
-Installation Guide
-1.	Clone the repository 
+![System Architecture](https://github.com/Techsphere-Solutions-TenderTool/TenderToolBackend/blob/main/Images/WIL-ArchitectureDiagram.jpg)
 
+---
+
+## 📃 AWS Console Screenshots
+
+<img src="https://raw.githubusercontent.com/Techsphere-Solutions-TenderTool/TenderToolBackend/main/Images/AWS/Console1.jpg" width="48%"/>
+<img src="https://raw.githubusercontent.com/Techsphere-Solutions-TenderTool/TenderToolBackend/main/Images/AWS/Console2.jpg" width="48%"/>
+<img src="https://raw.githubusercontent.com/Techsphere-Solutions-TenderTool/TenderToolBackend/main/Images/AWS/Console3.jpg" width="48%"/>
+<img src="https://raw.githubusercontent.com/Techsphere-Solutions-TenderTool/TenderToolBackend/main/Images/AWS/Console4.jpg" width="48%"/>
+
+---
+
+## 🚀 Prerequisites
+
+* Node.js (v20+ LTS)
+* npm
+* AWS CLI & AWS SAM CLI
+* Visual Studio Code
+* AWS account with IAM permissions
+* SonarCloud account (optional)
+
+---
+
+## 📚 Installation Guide
+
+```bash
 git clone https://github.com/Techsphere-Solutions-TenderTool/TenderToolBackend.git
 cd TenderToolBackend
-
-
-2.	Install dependencies
-
-
 npm install
-
-
-3.	Copy environment file
-
-
 cp .env.example .env
-
-Then update .env with your AWS and database credentials.
-
-4.	Run locally
-
-
+# Update .env with credentials
 npm run dev
-
-5.	Test endpoint
-
-
 curl http://localhost:3000/api/health
-________________________________________
-Environment Configuration
+```
 
-env
+---
 
+## 🔢 Environment Configuration
+
+Create a `.env` file:
+
+```
 AWS_REGION=za-north-1
-
 AWS_ACCESS_KEY_ID=your-key
-
 AWS_SECRET_ACCESS_KEY=your-secret
-
 DB_HOST=your-rds-endpoint.amazonaws.com
-
 DB_USER=admin
-
 DB_PASSWORD=your-secure-password
-
 DB_NAME=tenderdb
-
 COGNITO_USER_POOL_ID=za-north-1_XXXXXXXXX
-
 SNS_TOPIC_ARN=arn:aws:sns:za-north-1:xxxx:NewTenderTopic
-
 S3_BUCKET=tender-raw-data-bucket
-
 PORT=3000
+```
 
-Security Note: Never commit .env to Git. Use AWS Secrets Manager in production.
-________________________________________
-Available Scripts
+> **Note:** Use AWS Secrets Manager for production secrets.
 
-Script	Description
+---
 
-npm start	Run in production mode
+## 📅 Available Scripts
 
-npm run dev	Run with hot-reload (nodemon)
+| Script             | Description         |
+| ------------------ | ------------------- |
+| `npm start`        | Run in production   |
+| `npm run dev`      | Run with hot-reload |
+| `npm test`         | Run Jest unit tests |
+| `npm run coverage` | Coverage report     |
+| `npm run lint`     | ESLint check        |
+| `sam build`        | SAM build           |
+| `sam deploy`       | Deploy to AWS       |
 
-npm test	Run Jest unit tests
+---
 
-npm run coverage	Generate test coverage report
+## 🚧 API Endpoints
 
-npm run lint	Lint code with ESLint
+**Base URL:** `https://api.tendertool.tech/api`
 
-sam build	Build SAM application
+| Endpoint                   | Method | Description          |
+| -------------------------- | ------ | -------------------- |
+| `/tenders`                 | GET    | List all tenders     |
+| `/tenders/:id`             | GET    | Get tender by ID     |
+| `/tenders/search`          | POST   | Search by filters    |
+| `/preferences`             | POST   | Save user prefs      |
+| `/notifications/subscribe` | POST   | Tender alerts        |
+| `/chatbot/query`           | POST   | Chatbot Q&A          |
+| `/summaries/:id`           | GET    | AI-generated summary |
 
-sam deploy	Deploy to AWS
-________________________________________
-API Endpoints
+**Example:**
 
-Base URL: https://api.tendertool.tech/api
+```bash
+curl -H "Authorization: Bearer <JWT>" https://api.tendertool.tech/api/tenders
+```
 
-Endpoint	Method	Description
-
-/tenders	GET	List all tenders
-
-/tenders/:id	GET	Get tender by ID
-
-/tenders/search	POST	Search by keyword, category, location
-
-/preferences	POST	Save user preferences
-
-/notifications/subscribe	POST	Subscribe to alerts
-
-/chatbot/query	POST	AI chatbot query
-
-/summaries/:id	GET	Get AI-generated tender summary
-
-Example Request
-
-bash
-
-GET /api/tenders
-
-Authorization: Bearer <cognito-jwt-token>
-
-Example Response
-
-json
+```json
 {
   "tenders": [
     {
@@ -203,48 +165,43 @@ json
     }
   ]
 }
-________________________________________
-Security
-•	Authentication: AWS Cognito User Pools + JWT
+```
 
-•	Authorization: Role-based access via Cognito groups
+---
 
-•	Encryption: 
+## 🔒 Security
 
-o	In transit: TLS 1.2+
+* **Auth:** AWS Cognito User Pools + JWT
+* **Roles:** Cognito groups (RBAC)
+* **Encryption:** TLS 1.2+ (in transit), AWS KMS (at rest)
+* **Secrets:** AWS Secrets Manager
+* **Compliance:** POPIA ready
+* **Auditing:** GitHub Dependabot + SonarCloud
 
-o	At rest: AWS KMS + RDS encryption
+---
 
-•	Secrets: AWS Secrets Manager / Parameter Store
+## 🚜 Deployment (AWS SAM)
 
-•	Compliance: POPIA-aligned data handling
-
-•	Scanning: SonarCloud + GitHub Dependency Scan
-________________________________________
-Deployment (AWS SAM)
-
-bash
-
+```bash
 sam build
-
 sam deploy --guided
+```
 
-•	Uses OIDC with GitHub Actions
+* Auto-deploys all services
+* Supports OIDC GitHub Actions
+* Scales on-demand
 
-•	Deploys Lambda, API Gateway, RDS, S3, SNS, SQS, EventBridge
+---
 
-•	Auto-scaling and pay-per-use
-________________________________________
-Continuous Integration (GitHub Actions)
+## 🚧 Continuous Integration (GitHub Actions)
 
-yaml
+![DevOps Diagram](https://github.com/Techsphere-Solutions-TenderTool/TenderToolBackend/blob/main/Images/DevOpsPipelinesFlowChart%20\(1\)%20\(1\).jpg)
 
+```yaml
 name: CI/CD Pipeline
-
 on: [push, pull_request]
 
 jobs:
-
   test:
     runs-on: ubuntu-latest
     steps:
@@ -258,55 +215,49 @@ jobs:
     needs: test
     if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/deploy.yml
-•	Test → Build → SonarCloud → Deploy
-•	Push to main → Auto-deploy
-________________________________________
-Tech Stack
+```
 
-Layer	Technology
+* **Test ✅ Build ✅ Sonar ✅ Deploy**
 
-Runtime	Node.js v20
+---
 
-Framework	AWS Lambda + Express (local)
+## 💡 Tech Stack
 
-Database	Amazon RDS (PostgreSQL)
+| Layer           | Technology              |
+| --------------- | ----------------------- |
+| Runtime         | Node.js 20              |
+| API             | AWS Lambda + Express    |
+| Auth            | AWS Cognito             |
+| DB              | Amazon RDS (PostgreSQL) |
+| Storage         | Amazon S3               |
+| Queue/Messaging | Amazon SNS + SQS        |
+| Schedule        | Amazon EventBridge      |
+| Deployment      | AWS SAM                 |
+| CI/CD           | GitHub Actions          |
+| Quality         | SonarCloud              |
+| Testing         | Jest + Supertest        |
 
-Storage	Amazon S3
+---
 
-Auth	AWS Cognito
+## 🔗 Repository Links
 
-Messaging	Amazon SQS, SNS
+* **Frontend:** [TenderToolFrontend](https://github.com/Techsphere-Solutions-TenderTool/Frontend)
+* **Backend:** [TenderToolBackend](https://github.com/Techsphere-Solutions-TenderTool/TenderToolBackend)
 
-Scheduler	Amazon EventBridge
+---
 
-API	Amazon API Gateway
+## 📖 References
 
-Frontend	React + Vite + Tailwind + DaisyUI
+* AWS Docs: Lambda, S3, RDS, SNS, Cognito
+* POPIA Guidelines (2021)
+* GitHub Actions Docs (2024)
+* ICAgile & Atlassian (DoR & DoD)
 
-Deployment	AWS SAM
+##  Liscensing 
+please see our MIT Liscense in the Repository 
+---
 
-CI/CD	GitHub Actions
-
-Code Quality	SonarCloud
-
-Testing	Jest + Supertest
-________________________________________
-Repository Links
-•	Frontend: TenderToolFrontend
-•	Backend: TenderToolBackend
-________________________________________
-
-References
-•	AWS Documentation. (2025). AWS Lambda, RDS, S3, SNS, EventBridge.
-
-•	Atlassian. (n.d.). Definition of Ready (DoR).
-
-•	ICAgile. (2023). Definition of Done.
-
-•	POPIA Compliance Guidelines. (2021). South Africa.
-
-•	GitHub Actions Documentation. (2024).
-________________________________________
-Techsphere Solutions © 2025
-Keenan Ghisyan | Aisha Bilal Jakhura | Khatija Moosa Amod | Muhammed Ameer Amed | Shreya Naidoo | Varun Perumal
-
+<p align="center">
+  <strong>Techsphere Solutions © 2025</strong><br/>
+  Keenan Ghisyan • Aisha Bilal Jakhura • Khatija Moosa Amod • Muhammed Ameer Amed • Shreya Naidoo • Varun Perumal
+</p>

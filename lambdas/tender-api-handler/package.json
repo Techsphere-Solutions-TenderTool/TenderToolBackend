@@ -12,7 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@aws-sdk/client-sns": "^3.922.0",
+    "@aws-sdk/client-sns": "^3.974.0",
     "pg": "^8.16.3"
   }
 }
